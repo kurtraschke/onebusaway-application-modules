@@ -87,6 +87,7 @@ import org.onebusaway.transit_data.model.trips.TripsForAgencyQueryBean;
 import org.onebusaway.transit_data.model.trips.TripsForBoundsQueryBean;
 import org.onebusaway.transit_data.model.trips.TripsForRouteQueryBean;
 import org.onebusaway.transit_data.services.TransitDataService;
+import org.onebusaway.transit_data_federation.model.bundle.BundleItem;
 import org.onebusaway.transit_data_federation.services.AgencyAndIdLibrary;
 import org.onebusaway.transit_data_federation.services.AgencyService;
 import org.onebusaway.transit_data_federation.services.ArrivalAndDepartureAlarmService;
@@ -106,6 +107,12 @@ import org.onebusaway.transit_data_federation.services.beans.StopsBeanService;
 import org.onebusaway.transit_data_federation.services.beans.TripBeanService;
 import org.onebusaway.transit_data_federation.services.beans.TripDetailsBeanService;
 import org.onebusaway.transit_data_federation.services.beans.VehicleStatusBeanService;
+<<<<<<< HEAD
+=======
+import org.onebusaway.transit_data_federation.services.bundle.BundleManagementService;
+import org.onebusaway.transit_data_federation.services.bundle.BundleSearchService;
+import org.onebusaway.transit_data_federation.services.predictions.PredictionIntegrationService;
+>>>>>>> f24aa38... Mostly-untested WIP to bring over bundle hot-swapping.
 import org.onebusaway.transit_data_federation.services.realtime.CurrentVehicleEstimationService;
 import org.onebusaway.transit_data_federation.services.reporting.UserReportingService;
 import org.onebusaway.transit_data_federation.services.transit_graph.StopEntry;
@@ -176,6 +183,9 @@ class TransitDataServiceImpl implements TransitDataService {
 
   @Autowired
   private VehicleStatusBeanService _vehicleStatusBeanService;
+
+  @Autowired
+  private BundleManagementService _bundleManagementService;
 
   /****
    * {@link TransitDataService} Interface
