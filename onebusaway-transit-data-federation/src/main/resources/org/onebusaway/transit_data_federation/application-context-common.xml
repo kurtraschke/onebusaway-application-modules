@@ -32,13 +32,9 @@
            
   <import resource="classpath:org/onebusaway/container/application-context.xml" />
 
-  <bean id="bundle" class="org.onebusaway.transit_data_federation.services.FederatedTransitDataBundle">
-    <property name="path" value="${bundlePath}" />
-  </bean>
+  <bean id="bundle" class="org.onebusaway.transit_data_federation.services.FederatedTransitDataBundle" />
 
-  <bean id="otpGraphBundle" class="org.opentripplanner.model.GraphBundle">
-    <property name="path" value="${bundlePath}" />
-  </bean>
+  <bean id="otpGraphBundle" class="org.opentripplanner.model.GraphBundle" />
   
   <!-- Database Connection Configuration -->
   <bean id="dataSource" class="org.springframework.jdbc.datasource.DriverManagerDataSource">
@@ -49,14 +45,14 @@
   </bean>
 
   <!-- Override the default ehcache diskstore path -->
-  <bean class="org.onebusaway.container.spring.PropertyOverrideConfigurer">
+  <!--<bean class="org.onebusaway.container.spring.PropertyOverrideConfigurer">
     <property name="properties">
       <props>
         <prop key="ehCacheConfiguration.diskStorePath">${bundlePath}/cache</prop>
       </props>
     </property>
     <property name="order" value="0" />
-  </bean>
+  </bean>-->
 
   <!-- Common Services -->
   <bean id="shapePointsLibrary" class="org.onebusaway.transit_data_federation.impl.shapes.ShapePointsLibrary" />
