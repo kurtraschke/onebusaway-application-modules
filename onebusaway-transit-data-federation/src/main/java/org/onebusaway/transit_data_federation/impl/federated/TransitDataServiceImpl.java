@@ -184,7 +184,7 @@ class TransitDataServiceImpl implements TransitDataService {
   @Autowired
   private VehicleStatusBeanService _vehicleStatusBeanService;
 
-  @Autowired
+  @Autowired(required=false)
   private BundleManagementService _bundleManagementService;
 
   /****
@@ -673,5 +673,6 @@ class TransitDataServiceImpl implements TransitDataService {
 
     return adQuery;
   }
+
 
 }
