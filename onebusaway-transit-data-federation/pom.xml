@@ -101,11 +101,13 @@
       <version>2.4.1</version>
     </dependency>
     
+    <!-- GTFS-realtime WebSocket support -->
     <dependency>
-      <groupId>com.ning</groupId>
-      <artifactId>async-http-client</artifactId>
-      <version>1.7.19</version>
+      <groupId>org.eclipse.jetty.websocket</groupId>
+      <artifactId>websocket-client</artifactId>
+      <version>9.0.5.v20130815</version>
     </dependency>
+    
     <dependency>
       <groupId>org.onebusaway</groupId>
       <artifactId>onebusaway-gtfs-realtime-exporter</artifactId>
