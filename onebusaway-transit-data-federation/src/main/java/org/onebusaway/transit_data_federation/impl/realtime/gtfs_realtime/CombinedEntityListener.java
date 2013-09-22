@@ -39,7 +39,7 @@ import com.google.transit.realtime.GtfsRealtime.VehiclePosition;
  * @author kurt
  */
 public class CombinedEntityListener {
-    
+
     private static final Logger _log = LoggerFactory.getLogger(CombinedEntityListener.class);
     private GtfsRealtimeEntityListener _tripUpdatesListener = new TripUpdatesEntityListener();
     private GtfsRealtimeEntityListener _vehiclePositionsListener = new VehiclePositionsEntityListener();
@@ -55,16 +55,16 @@ public class CombinedEntityListener {
     public void setVehicleLocationListener(VehicleLocationListener vehicleLocationListener) {
         _vehicleLocationListener = vehicleLocationListener;
     }
-    
+
     public GtfsRealtimeEntityListener getTripUpdatesEntityListener() {
         return _tripUpdatesListener;
-        
+
     }
-    
+
     public GtfsRealtimeEntityListener getVehiclePositionsListener() {
         return _vehiclePositionsListener;
     }
-    
+
     private void applyUpdate(CombinedTripUpdatesAndVehiclePosition update) {
         VehicleLocationRecord record = _tripLibrary.createVehicleLocationRecordForUpdate(update);
         if (record != null) {
@@ -76,24 +76,24 @@ public class CombinedEntityListener {
                 _lastVehicleUpdate.put(vehicleId, timestamp);
             }
         }
-        
+
     }
-    
+
     private void createUpdateForBlockDescriptor(BlockDescriptor block) {
         BlockData bd = _dataByBlock.get(block);
-        
+
         CombinedTripUpdatesAndVehiclePosition update = new CombinedTripUpdatesAndVehiclePosition();
         update.block = block;
         update.tripUpdates = new ArrayList<TripUpdate>(bd.tripUpdates.values());
-        
-        
+
+
         if (!bd.vehiclePositions.isEmpty()) {
             Max<VehiclePosition> latestUpdate = new Max<VehiclePosition>();
-            
+
             for (VehiclePosition vp : bd.vehiclePositions.values()) {
                 latestUpdate.add(vp.getTimestamp(), vp);
             }
-            
+
             VehiclePosition vehiclePosition = latestUpdate.getMaxElement();
             update.vehiclePosition = vehiclePosition;
             if (vehiclePosition.hasVehicle()) {
@@ -102,9 +102,9 @@ public class CombinedEntityListener {
                     update.block.setVehicleId(vehicle.getId());
                 }
             }
-            
+
         }
-        
+
         if (update.block.getVehicleId() == null) {
             for (TripUpdate tripUpdate : update.tripUpdates) {
                 if (tripUpdate.hasVehicle()) {
@@ -115,99 +115,97 @@ public class CombinedEntityListener {
                 }
             }
         }
-        
+
         applyUpdate(update);
     }
-    
+
     private synchronized void handleNewTripUpdate(FeedEntity fe) {
         String id = fe.getId();
         TripUpdate t = fe.getTripUpdate();
-        
+
         if (t.hasTrip()) {
             BlockDescriptor bd = _tripLibrary.getTripDescriptorAsBlockDescriptor(t.getTrip());
             BlockData bld = _dataByBlock.get(bd);
-            
+
             bld.tripUpdates.put(id, t);
-            
+
             createUpdateForBlockDescriptor(bd);
         } else {
             _log.warn("expected a FeedEntity with a TripUpdate");
         }
     }
-    
+
     private synchronized void handleDeletedTripUpdate(FeedEntity fe) {
         String id = fe.getId();
         TripUpdate t = fe.getTripUpdate();
-        
+
         BlockDescriptor bd = _tripLibrary.getTripDescriptorAsBlockDescriptor(t.getTrip());
         BlockData bld = _dataByBlock.get(bd);
-        
+
         bld.tripUpdates.remove(id);
-        
+
         createUpdateForBlockDescriptor(bd);
     }
-    
+
     private synchronized void handleNewVehiclePosition(FeedEntity fe) {
         String id = fe.getId();
         VehiclePosition v = fe.getVehicle();
-        
+
         if (v.hasTrip()) {
             BlockDescriptor bd = _tripLibrary.getTripDescriptorAsBlockDescriptor(v.getTrip());
             BlockData bld = _dataByBlock.get(bd);
-            
+
             bld.vehiclePositions.put(id, v);
-            
+
             createUpdateForBlockDescriptor(bd);
         } else {
             _log.warn("expected a FeedEntity with a TripPosition");
         }
     }
-    
+
     private synchronized void handleDeletedVehiclePosition(FeedEntity fe) {
         String id = fe.getId();
         VehiclePosition v = fe.getVehicle();
-        
+
         BlockDescriptor bd = _tripLibrary.getTripDescriptorAsBlockDescriptor(v.getTrip());
         BlockData bld = _dataByBlock.get(bd);
-        
+
         bld.tripUpdates.remove(id);
-        
+
         createUpdateForBlockDescriptor(bd);
     }
-    
+
     private class TripUpdatesEntityListener implements GtfsRealtimeEntityListener {
-        
+
         @Override
         public void handleNewFeedEntity(FeedEntity fe) {
             handleNewTripUpdate(fe);
         }
-        
+
         @Override
         public void handleDeletedFeedEntity(FeedEntity fe) {
             handleDeletedTripUpdate(fe);
         }
     }
-    
+
     private class VehiclePositionsEntityListener implements GtfsRealtimeEntityListener {
-        
+
         @Override
         public void handleNewFeedEntity(FeedEntity fe) {
             handleNewVehiclePosition(fe);
-            
+
         }
-        
+
         @Override
         public void handleDeletedFeedEntity(FeedEntity fe) {
             handleDeletedVehiclePosition(fe);
         }
     }
-    
+
     public static class BlockData {
-        
+
         public BlockData() {
-            
         }
-        
         public Map<String, TripUpdate> tripUpdates = new HashMap<String, TripUpdate>();
         public Map<String, VehiclePosition> vehiclePositions = new HashMap<String, VehiclePosition>();
     }

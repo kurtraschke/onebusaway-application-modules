@@ -94,22 +94,22 @@ public class GtfsRealtimeFeedTest {
         GtfsRealtimeFeed feed = new GtfsRealtimeFeedImpl(endpoint,
                 30,
                 new GtfsRealtimeEntityListener() {
-                    @Override
-                    public void handleNewFeedEntity(FeedEntity fe) {
-                        System.out.println("Added: " + fe.getId());
-                        entities.put(fe.getId(), fe);
-                        lock.countDown();
+            @Override
+            public void handleNewFeedEntity(FeedEntity fe) {
+                System.out.println("Added: " + fe.getId());
+                entities.put(fe.getId(), fe);
+                lock.countDown();
 
-                    }
+            }
 
-                    @Override
-                    public void handleDeletedFeedEntity(FeedEntity fe) {
-                        System.out.println("Deleted: " + fe.getId());
-                        entities.remove(fe.getId());
-                        lock.countDown();
+            @Override
+            public void handleDeletedFeedEntity(FeedEntity fe) {
+                System.out.println("Deleted: " + fe.getId());
+                entities.remove(fe.getId());
+                lock.countDown();
 
-                    }
-                },
+            }
+        },
                 ses);
         feed.start();
 

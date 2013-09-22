@@ -56,7 +56,7 @@ import com.google.transit.realtime.GtfsRealtimeOneBusAway;
  * @author kurt
  */
 public class GtfsRealtimeFeedImpl implements GtfsRealtimeFeed {
-    
+
     private static final Logger _log = LoggerFactory.getLogger(GtfsRealtimeFeedImpl.class);
     private URI _endpoint;
     private int _refreshInterval;
@@ -68,12 +68,12 @@ public class GtfsRealtimeFeedImpl implements GtfsRealtimeFeed {
     private ScheduledExecutorService _scheduledExecutorService;
     private ScheduledFuture<?> _refreshTask;
     private static final ExtensionRegistry _registry = ExtensionRegistry.newInstance();
-    
+
     static {
         _registry.add(GtfsRealtimeOneBusAway.obaFeedEntity);
         _registry.add(GtfsRealtimeOneBusAway.obaTripUpdate);
     }
-    
+
     public GtfsRealtimeFeedImpl(URI endpoint, int refreshInterval,
             GtfsRealtimeEntityListener entityListener,
             ScheduledExecutorService scheduledExecutorService) {
@@ -83,7 +83,7 @@ public class GtfsRealtimeFeedImpl implements GtfsRealtimeFeed {
         _entityListener = entityListener;
         _scheduledExecutorService = scheduledExecutorService;
     }
-    
+
     @Override
     public void start() {
         if (!_isPush && _refreshInterval > 0) {
@@ -93,7 +93,7 @@ public class GtfsRealtimeFeedImpl implements GtfsRealtimeFeed {
             startPush();
         }
     }
-    
+
     @Override
     public void stop() {
         if (_refreshTask != null) {
@@ -119,7 +119,7 @@ public class GtfsRealtimeFeedImpl implements GtfsRealtimeFeed {
             _log.error("Exception stopping WebSocket client", e);
         }
     }
-    
+
     private void startPush() {
         _webSocketClient = new WebSocketClient();
         _socket = new GtfsRealtimeClientSocket();
@@ -136,15 +136,14 @@ public class GtfsRealtimeFeedImpl implements GtfsRealtimeFeed {
             _log.error("Error starting WebSocket client", t);
             _scheduledExecutorService.schedule(new RestartTask(), _refreshInterval, TimeUnit.SECONDS);
         }
-        
     }
-    
+
     private void handleFeedMessage(FeedMessage fm) {
         FeedHeader fh = fm.getHeader();
-        
+
         Set<String> startingEntities = _feedEntityById.keySet();
         Set<String> newEntities = new HashSet<String>();
-        
+
         for (FeedEntity fe : fm.getEntityList()) {
             if (fe.hasIsDeleted() && fe.getIsDeleted()) {
                 FeedEntity deletedEntity = _feedEntityById.remove(fe.getId());
@@ -157,7 +156,7 @@ public class GtfsRealtimeFeedImpl implements GtfsRealtimeFeed {
                 _entityListener.handleNewFeedEntity(fe);
             }
         }
-        
+
         if (fh.getIncrementality() == FeedHeader.Incrementality.FULL_DATASET) {
             startingEntities.removeAll(newEntities);
             for (String deletedEntityId : startingEntities) {
@@ -168,12 +167,12 @@ public class GtfsRealtimeFeedImpl implements GtfsRealtimeFeed {
             }
         }
     }
-    
+
     @Override
     public Collection<FeedEntity> getAllFeedEntities() {
         return new ArrayList<FeedEntity>(_feedEntityById.values());
     }
-    
+
     private FeedMessage readFeedFromStream(InputStream in) throws IOException {
         try {
             return FeedMessage.parseFrom(in, _registry);
@@ -185,14 +184,14 @@ public class GtfsRealtimeFeedImpl implements GtfsRealtimeFeed {
             }
         }
     }
-    
+
     private FeedMessage readFeedFromUrl(URL url) throws IOException {
         InputStream in = url.openStream();
         return readFeedFromStream(in);
     }
-    
+
     private class RefreshTask implements Runnable {
-        
+
         @Override
         public void run() {
             try {
@@ -203,9 +202,9 @@ public class GtfsRealtimeFeedImpl implements GtfsRealtimeFeed {
             }
         }
     }
-    
+
     private class RestartTask implements Runnable {
-        
+
         @Override
         public void run() {
             stop();

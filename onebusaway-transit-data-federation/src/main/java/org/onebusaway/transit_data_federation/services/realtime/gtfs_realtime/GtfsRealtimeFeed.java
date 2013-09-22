@@ -24,7 +24,10 @@ import com.google.transit.realtime.GtfsRealtime.FeedEntity;
  * @author kurt
  */
 public interface GtfsRealtimeFeed {
+
     public void start();
+
     public void stop();
+
     public Collection<FeedEntity> getAllFeedEntities();
 }
