@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
@@ -170,7 +171,7 @@ public class GtfsRealtimeFeedImpl implements GtfsRealtimeFeed {
     
     @Override
     public Collection<FeedEntity> getAllFeedEntities() {
-        return _feedEntityById.values();
+        return new ArrayList<FeedEntity>(_feedEntityById.values());
     }
     
     private FeedMessage readFeedFromStream(InputStream in) throws IOException {
