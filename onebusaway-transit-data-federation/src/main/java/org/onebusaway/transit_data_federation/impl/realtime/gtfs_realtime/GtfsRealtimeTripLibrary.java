@@ -16,7 +16,6 @@
 package org.onebusaway.transit_data_federation.impl.realtime.gtfs_realtime;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -82,9 +81,8 @@ class GtfsRealtimeTripLibrary {
       FeedMessage tripUpdates, FeedMessage vehiclePositions) {
 
     Map<BlockDescriptor, List<TripUpdate>> tripUpdatesByBlockDescriptor = getTripUpdatesByBlockDescriptor(tripUpdates);
-    boolean tripsIncludeVehicleIds = determineIfTripUpdatesIncludeVehicleIds(tripUpdatesByBlockDescriptor.keySet());
     Map<BlockDescriptor, FeedEntity> vehiclePositionsByBlockDescriptor = getVehiclePositionsByBlockDescriptor(
-        vehiclePositions, tripsIncludeVehicleIds);
+        vehiclePositions);
 
     List<CombinedTripUpdatesAndVehiclePosition> updates = new ArrayList<CombinedTripUpdatesAndVehiclePosition>(
         tripUpdatesByBlockDescriptor.size());
@@ -125,7 +123,7 @@ class GtfsRealtimeTripLibrary {
   }
 
   /**
-   * The {@link VehicleLocationRecord} is guarnateed to have a
+   * The {@link VehicleLocationRecord} is guaranteed to have a
    * {@link VehicleLocationRecord#getVehicleId()} value.
    * 
    * @param update
@@ -161,22 +159,6 @@ class GtfsRealtimeTripLibrary {
     return record;
   }
 
-  /****
-   * 
-   ****/
-
-  private boolean determineIfTripUpdatesIncludeVehicleIds(
-      Collection<BlockDescriptor> blockDescriptors) {
-
-    int vehicleIdCount = 0;
-    for (BlockDescriptor blockDescriptor : blockDescriptors) {
-      if (blockDescriptor.getVehicleId() != null)
-        vehicleIdCount++;
-    }
-
-    return vehicleIdCount > blockDescriptors.size() / 2;
-  }
-
   private Map<BlockDescriptor, List<TripUpdate>> getTripUpdatesByBlockDescriptor(
       FeedMessage tripUpdates) {
 
@@ -194,7 +176,7 @@ class GtfsRealtimeTripLibrary {
       }
       TripDescriptor trip = tripUpdate.getTrip();
       BlockDescriptor blockDescriptor = getTripDescriptorAsBlockDescriptor(
-          trip, true);
+          trip);
       totalTrips++;
       if (blockDescriptor == null) {
         unknownTrips++;
@@ -246,7 +228,7 @@ class GtfsRealtimeTripLibrary {
   }
 
   private Map<BlockDescriptor, FeedEntity> getVehiclePositionsByBlockDescriptor(
-      FeedMessage vehiclePositions, boolean includeVehicleIds) {
+      FeedMessage vehiclePositions) {
 
     Map<BlockDescriptor, FeedEntity> vehiclePositionsByBlockDescriptor = new HashMap<BlockDescriptor, FeedEntity>();
 
@@ -261,7 +243,7 @@ class GtfsRealtimeTripLibrary {
       }
       TripDescriptor trip = vehiclePosition.getTrip();
       BlockDescriptor blockDescriptor = getTripDescriptorAsBlockDescriptor(
-          trip, includeVehicleIds);
+          trip);
       if (blockDescriptor != null) {
         FeedEntity existing = vehiclePositionsByBlockDescriptor.put(
             blockDescriptor, entity);
@@ -274,8 +256,8 @@ class GtfsRealtimeTripLibrary {
     return vehiclePositionsByBlockDescriptor;
   }
 
-  private BlockDescriptor getTripDescriptorAsBlockDescriptor(
-      TripDescriptor trip, boolean includeVehicleIds) {
+  public BlockDescriptor getTripDescriptorAsBlockDescriptor(
+      TripDescriptor trip) {
     if (!trip.hasTripId()) {
       return null;
     }
