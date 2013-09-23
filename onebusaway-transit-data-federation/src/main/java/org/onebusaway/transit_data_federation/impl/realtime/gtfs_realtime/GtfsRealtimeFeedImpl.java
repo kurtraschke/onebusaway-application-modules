@@ -19,7 +19,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -30,6 +29,14 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.http.HttpEntity;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.conn.HttpClientConnectionManager;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.cache.CacheConfig;
+import org.apache.http.impl.client.cache.CachingHttpClients;
+import org.apache.http.impl.conn.BasicHttpClientConnectionManager;
 import org.eclipse.jetty.websocket.api.CloseStatus;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.StatusCode;
@@ -67,6 +74,8 @@ public class GtfsRealtimeFeedImpl implements GtfsRealtimeFeed {
     private Map<String, FeedEntity> _feedEntityById = new ConcurrentHashMap<String, FeedEntity>();
     private ScheduledExecutorService _scheduledExecutorService;
     private ScheduledFuture<?> _refreshTask;
+    private HttpClientConnectionManager _connectionManager;
+    private CloseableHttpClient _httpClient;
     private static final ExtensionRegistry _registry = ExtensionRegistry.newInstance();
 
     static {
@@ -87,6 +96,15 @@ public class GtfsRealtimeFeedImpl implements GtfsRealtimeFeed {
     @Override
     public void start() {
         if (!_isPush && _refreshInterval > 0) {
+            _connectionManager = new BasicHttpClientConnectionManager();
+
+            CacheConfig cacheConfig = CacheConfig.custom().setSharedCache(false).build();
+
+            _httpClient = CachingHttpClients.custom()
+                    .setCacheConfig(cacheConfig)
+                    .setConnectionManager(_connectionManager)
+                    .build();
+
             _refreshTask = _scheduledExecutorService.scheduleAtFixedRate(
                     new GtfsRealtimeFeedImpl.RefreshTask(), 0, _refreshInterval, TimeUnit.SECONDS);
         } else if (_isPush) {
@@ -99,6 +117,11 @@ public class GtfsRealtimeFeedImpl implements GtfsRealtimeFeed {
         if (_refreshTask != null) {
             _refreshTask.cancel(true);
             _refreshTask = null;
+        }
+
+        if (_connectionManager != null) {
+            _connectionManager.shutdown();
+            _connectionManager = null;
         }
 
         try {
@@ -185,9 +208,17 @@ public class GtfsRealtimeFeedImpl implements GtfsRealtimeFeed {
         }
     }
 
-    private FeedMessage readFeedFromUrl(URL url) throws IOException {
-        InputStream in = url.openStream();
-        return readFeedFromStream(in);
+    private FeedMessage readFeedFromUri(URI uri) throws IOException {
+        HttpGet get = new HttpGet(uri);
+        CloseableHttpResponse r = _httpClient.execute(get);
+        HttpEntity e = r.getEntity();
+
+        try {
+            InputStream s = e.getContent();
+            return readFeedFromStream(s);
+        } finally {
+            r.close();
+        }
     }
 
     private class RefreshTask implements Runnable {
@@ -195,7 +226,7 @@ public class GtfsRealtimeFeedImpl implements GtfsRealtimeFeed {
         @Override
         public void run() {
             try {
-                FeedMessage fm = readFeedFromUrl(_endpoint.toURL());
+                FeedMessage fm = readFeedFromUri(_endpoint);
                 handleFeedMessage(fm);
             } catch (Throwable t) {
                 _log.warn("Error updating from GTFS-realtime data sources", t);
