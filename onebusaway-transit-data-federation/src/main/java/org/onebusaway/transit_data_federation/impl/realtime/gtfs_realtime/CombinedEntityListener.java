@@ -159,7 +159,7 @@ public class CombinedEntityListener {
 
             createUpdateForBlockDescriptor(bd);
         } else {
-            _log.warn("expected a FeedEntity with a TripPosition");
+            _log.warn("expected a FeedEntity with a VehiclePosition");
         }
     }
 
