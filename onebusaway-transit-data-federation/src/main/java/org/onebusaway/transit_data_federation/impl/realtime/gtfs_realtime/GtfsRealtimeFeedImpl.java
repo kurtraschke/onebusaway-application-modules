@@ -257,8 +257,10 @@ public class GtfsRealtimeFeedImpl implements GtfsRealtimeFeed {
         }
 
         public void close() throws IOException {
-            _closeInProgress = true;
-            _session.close(new CloseStatus(StatusCode.SHUTDOWN, "Client shutting down."));
+            if (_session != null) {
+                _closeInProgress = true;
+                _session.close(new CloseStatus(StatusCode.SHUTDOWN, "Client shutting down."));
+            }
         }
 
         @OnWebSocketError
