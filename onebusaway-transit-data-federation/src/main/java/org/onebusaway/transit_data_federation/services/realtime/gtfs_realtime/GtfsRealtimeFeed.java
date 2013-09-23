@@ -15,10 +15,6 @@
  */
 package org.onebusaway.transit_data_federation.services.realtime.gtfs_realtime;
 
-import java.util.Collection;
-
-import com.google.transit.realtime.GtfsRealtime.FeedEntity;
-
 /**
  *
  * @author kurt
@@ -28,6 +24,4 @@ public interface GtfsRealtimeFeed {
     public void start();
 
     public void stop();
-
-    public Collection<FeedEntity> getAllFeedEntities();
 }

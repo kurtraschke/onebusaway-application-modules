@@ -191,11 +191,6 @@ public class GtfsRealtimeFeedImpl implements GtfsRealtimeFeed {
         }
     }
 
-    @Override
-    public Collection<FeedEntity> getAllFeedEntities() {
-        return new ArrayList<FeedEntity>(_feedEntityById.values());
-    }
-
     private FeedMessage readFeedFromStream(InputStream in) throws IOException {
         try {
             return FeedMessage.parseFrom(in, _registry);
