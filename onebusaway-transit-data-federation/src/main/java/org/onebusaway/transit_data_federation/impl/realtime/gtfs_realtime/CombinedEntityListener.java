@@ -38,7 +38,7 @@ import com.google.transit.realtime.GtfsRealtime.VehiclePosition;
  *
  * @author kurt
  */
-public class CombinedEntityListener {
+class CombinedEntityListener {
 
     private static final Logger _log = LoggerFactory.getLogger(CombinedEntityListener.class);
     private GtfsRealtimeEntityListener _tripUpdatesListener = new TripUpdatesEntityListener();
