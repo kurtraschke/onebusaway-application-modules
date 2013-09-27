@@ -16,8 +16,10 @@
 package org.onebusaway.transit_data_federation.impl.realtime.gtfs_realtime;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
 
 import org.onebusaway.collections.FactoryMap;
@@ -77,6 +79,19 @@ class CombinedEntityListener {
             }
         }
 
+        Calendar c = Calendar.getInstance();
+        c.add(Calendar.MINUTE, -15);
+        Date staleRecordThreshold = c.getTime();
+
+        Iterator<Map.Entry<AgencyAndId, Date>> it = _lastVehicleUpdate.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<AgencyAndId, Date> entry = it.next();
+            AgencyAndId vehicleId = entry.getKey();
+            Date lastUpdateTime = entry.getValue();
+            if (lastUpdateTime.before(staleRecordThreshold)) {
+                it.remove();
+            }
+        }
     }
 
     private void createUpdateForBlockDescriptor(BlockDescriptor block) {
