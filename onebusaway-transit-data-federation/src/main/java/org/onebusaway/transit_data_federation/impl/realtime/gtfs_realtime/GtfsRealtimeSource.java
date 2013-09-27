@@ -19,11 +19,11 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
 
+import org.apache.http.conn.HttpClientConnectionManager;
 import org.onebusaway.realtime.api.VehicleLocationListener;
 import org.onebusaway.transit_data_federation.services.AgencyService;
 import org.onebusaway.transit_data_federation.services.blocks.BlockCalendarService;
@@ -49,6 +49,8 @@ public class GtfsRealtimeSource {
   private ServiceAlertsService _serviceAlertService;
 
   private ScheduledExecutorService _scheduledExecutorService;
+  
+  private HttpClientConnectionManager _connectionManager;
 
   private URI _tripUpdatesUri;
 
@@ -102,6 +104,12 @@ public class GtfsRealtimeSource {
   public void setScheduledExecutorService(
       ScheduledExecutorService scheduledExecutorService) {
     _scheduledExecutorService = scheduledExecutorService;
+  }
+  
+  @Autowired
+  public void setHttpClientConnectionManager(
+          HttpClientConnectionManager connectionManager) {
+    _connectionManager = connectionManager;
   }
 
   public void setTripUpdatesUri(URI tripUpdatesUri) {
@@ -158,7 +166,8 @@ public class GtfsRealtimeSource {
        alertsListener.setAlertLibrary(_alertLibrary);
        alertsListener.setServiceAlertsService(_serviceAlertService);
 
-        _alertsFeed = new GtfsRealtimeFeedImpl(_alertsUri, _refreshInterval, alertsListener, _scheduledExecutorService);
+        _alertsFeed = new GtfsRealtimeFeedImpl(_alertsUri, _refreshInterval,
+                alertsListener, _scheduledExecutorService, _connectionManager);
 
        _alertsFeed.start();
     }
@@ -168,13 +177,21 @@ public class GtfsRealtimeSource {
        combinedListener.setTripLibrary(_tripsLibrary);
         combinedListener.setVehicleLocationListener(_vehicleLocationListener);
         if (_tripUpdatesUri != null) {
-            _tripUpdatesFeed = new GtfsRealtimeFeedImpl(_tripUpdatesUri, _refreshInterval, combinedListener.getTripUpdatesEntityListener(), _scheduledExecutorService);
+            _tripUpdatesFeed = new GtfsRealtimeFeedImpl(_tripUpdatesUri, 
+                    _refreshInterval, 
+                    combinedListener.getTripUpdatesEntityListener(),
+                    _scheduledExecutorService,
+                    _connectionManager);
 
             _tripUpdatesFeed.start();
         }
 
         if (_vehiclePositionsUri != null) {
-             _vehiclePositionsFeed = new GtfsRealtimeFeedImpl(_vehiclePositionsUri, _refreshInterval, combinedListener.getVehiclePositionsListener(), _scheduledExecutorService);
+             _vehiclePositionsFeed = new GtfsRealtimeFeedImpl(_vehiclePositionsUri,
+                     _refreshInterval, 
+                     combinedListener.getVehiclePositionsListener(),
+                     _scheduledExecutorService,
+                     _connectionManager);
 
             _vehiclePositionsFeed.start();
         }

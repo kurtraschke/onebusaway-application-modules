@@ -34,6 +34,8 @@ import javax.annotation.PostConstruct;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 
+import org.apache.http.conn.HttpClientConnectionManager;
+import org.apache.http.impl.conn.BasicHttpClientConnectionManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -90,6 +92,7 @@ public class GtfsRealtimeFeedTest {
         final Map<String, FeedEntity> entities = new HashMap<String, FeedEntity>();
 
         ScheduledExecutorService ses = Executors.newSingleThreadScheduledExecutor();
+        HttpClientConnectionManager connectionManager = new BasicHttpClientConnectionManager();
 
         GtfsRealtimeFeed feed = new GtfsRealtimeFeedImpl(endpoint,
                 30,
@@ -110,12 +113,14 @@ public class GtfsRealtimeFeedTest {
 
             }
         },
-                ses);
+                ses,
+                connectionManager);
         feed.start();
 
         lock.await();
         feed.stop();
         ses.shutdown();
+        connectionManager.shutdown();
 
         assertEquals(new HashSet(entities.values()), _testEntities);
     }

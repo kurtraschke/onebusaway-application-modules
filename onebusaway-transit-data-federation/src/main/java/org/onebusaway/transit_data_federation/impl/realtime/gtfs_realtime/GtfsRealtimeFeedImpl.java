@@ -19,8 +19,6 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
@@ -36,7 +34,6 @@ import org.apache.http.conn.HttpClientConnectionManager;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.cache.CacheConfig;
 import org.apache.http.impl.client.cache.CachingHttpClients;
-import org.apache.http.impl.conn.BasicHttpClientConnectionManager;
 import org.eclipse.jetty.websocket.api.CloseStatus;
 import org.eclipse.jetty.websocket.api.Session;
 import org.eclipse.jetty.websocket.api.StatusCode;
@@ -85,19 +82,19 @@ public class GtfsRealtimeFeedImpl implements GtfsRealtimeFeed {
 
     public GtfsRealtimeFeedImpl(URI endpoint, int refreshInterval,
             GtfsRealtimeEntityListener entityListener,
-            ScheduledExecutorService scheduledExecutorService) {
+            ScheduledExecutorService scheduledExecutorService,
+            HttpClientConnectionManager connectionManager) {
         _endpoint = endpoint;
         _refreshInterval = refreshInterval;
         _isPush = _endpoint.getScheme().equals("ws") || _endpoint.getScheme().equals("wss");
         _entityListener = entityListener;
         _scheduledExecutorService = scheduledExecutorService;
+        _connectionManager = connectionManager;
     }
 
     @Override
     public void start() {
         if (!_isPush && _refreshInterval > 0) {
-            _connectionManager = new BasicHttpClientConnectionManager();
-
             CacheConfig cacheConfig = CacheConfig.custom().setSharedCache(false).build();
 
             _httpClient = CachingHttpClients.custom()
@@ -117,11 +114,6 @@ public class GtfsRealtimeFeedImpl implements GtfsRealtimeFeed {
         if (_refreshTask != null) {
             _refreshTask.cancel(true);
             _refreshTask = null;
-        }
-
-        if (_connectionManager != null) {
-            _connectionManager.shutdown();
-            _connectionManager = null;
         }
 
         try {
@@ -289,6 +281,5 @@ public class GtfsRealtimeFeedImpl implements GtfsRealtimeFeed {
                 _log.warn("Error updating from GTFS-realtime data sources", t);
             }
         }
-        
     }
 }
