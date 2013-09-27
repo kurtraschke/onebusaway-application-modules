@@ -96,11 +96,9 @@ class CombinedEntityListener {
 
             VehiclePosition vehiclePosition = latestUpdate.getMaxElement();
             update.vehiclePosition = vehiclePosition;
-            if (vehiclePosition.hasVehicle()) {
-                GtfsRealtime.VehicleDescriptor vehicle = vehiclePosition.getVehicle();
-                if (vehicle.hasId()) {
-                    update.block.setVehicleId(vehicle.getId());
-                }
+            GtfsRealtime.VehicleDescriptor vehicle = vehiclePosition.getVehicle();
+            if (vehicle.hasId()) {
+                update.block.setVehicleId(vehicle.getId());
             }
 
         }
@@ -121,9 +119,9 @@ class CombinedEntityListener {
 
     private synchronized void handleNewTripUpdate(FeedEntity fe) {
         String id = fe.getId();
-        TripUpdate t = fe.getTripUpdate();
 
-        if (t.hasTrip()) {
+        if (fe.hasTripUpdate() && fe.getTripUpdate().hasTrip()) {
+            TripUpdate t = fe.getTripUpdate();
             BlockDescriptor bd = _tripLibrary.getTripDescriptorAsBlockDescriptor(t.getTrip());
             BlockData bld = _dataByBlock.get(bd);
 
@@ -149,9 +147,10 @@ class CombinedEntityListener {
 
     private synchronized void handleNewVehiclePosition(FeedEntity fe) {
         String id = fe.getId();
-        VehiclePosition v = fe.getVehicle();
 
-        if (v.hasTrip()) {
+        if (fe.hasVehicle() && fe.getVehicle().hasTrip()) {
+            VehiclePosition v = fe.getVehicle();
+
             BlockDescriptor bd = _tripLibrary.getTripDescriptorAsBlockDescriptor(v.getTrip());
             BlockData bld = _dataByBlock.get(bd);
 
