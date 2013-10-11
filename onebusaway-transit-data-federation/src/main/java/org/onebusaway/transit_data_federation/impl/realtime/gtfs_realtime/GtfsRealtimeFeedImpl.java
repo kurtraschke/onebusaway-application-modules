@@ -73,11 +73,13 @@ public class GtfsRealtimeFeedImpl implements GtfsRealtimeFeed {
     private ScheduledFuture<?> _refreshTask;
     private HttpClientConnectionManager _connectionManager;
     private CloseableHttpClient _httpClient;
+    private long lastUpdateIndex = -1;
     private static final ExtensionRegistry _registry = ExtensionRegistry.newInstance();
 
     static {
         _registry.add(GtfsRealtimeOneBusAway.obaFeedEntity);
         _registry.add(GtfsRealtimeOneBusAway.obaTripUpdate);
+        _registry.add(GtfsRealtimeOneBusAway.obaFeedHeader);
     }
 
     public GtfsRealtimeFeedImpl(URI endpoint, int refreshInterval,
@@ -155,7 +157,24 @@ public class GtfsRealtimeFeedImpl implements GtfsRealtimeFeed {
 
     private void handleFeedMessage(FeedMessage fm) {
         FeedHeader fh = fm.getHeader();
+        
+        if (fh.getIncrementality() == FeedHeader.Incrementality.DIFFERENTIAL
+                && fh.hasExtension(GtfsRealtimeOneBusAway.obaFeedHeader)) {
+            GtfsRealtimeOneBusAway.OneBusAwayFeedHeader ofh = fh.getExtension(GtfsRealtimeOneBusAway.obaFeedHeader);
 
+            if (ofh.hasIncrementalIndex()) {
+                long thisUpdateIndex = ofh.getIncrementalIndex();
+
+                if (lastUpdateIndex > 0 && lastUpdateIndex + 1 != thisUpdateIndex) {
+                    _log.warn("Missed incremental update detected (expected "
+                            + (lastUpdateIndex + 1) + ", got " + thisUpdateIndex + ") ; restarting.");
+                    _scheduledExecutorService.schedule(new RestartTask(), _refreshInterval, TimeUnit.SECONDS);
+                } else {
+                    lastUpdateIndex = thisUpdateIndex;
+                }
+            }
+        }
+        
         Set<String> startingEntities = _feedEntityById.keySet();
         Set<String> newEntities = new HashSet<String>();
 
@@ -230,6 +249,7 @@ public class GtfsRealtimeFeedImpl implements GtfsRealtimeFeed {
                 _entityListener.handleDeletedFeedEntity(fe);
             }
             _feedEntityById.clear();
+            lastUpdateIndex = -1;
             startPush();
         }
     }
