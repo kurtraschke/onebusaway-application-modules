@@ -504,6 +504,7 @@
             <exclude>**/data-sources.xml</exclude>
             <exclude>**/META-INF/context.xml</exclude>
             <exclude>**/WEB-INF/glassfish-web.xml</exclude>
+            <exclude>**/nbactions.xml</exclude>
             <exclude>**/*.action</exclude>
             <exclude>**/*.ai</exclude>
             <exclude>**/*.tagx</exclude>
