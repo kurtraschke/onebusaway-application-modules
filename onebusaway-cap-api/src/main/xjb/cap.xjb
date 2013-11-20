@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jaxb:bindings xmlns:jaxb="http://java.sun.com/xml/ns/jaxb"
+               xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+               jaxb:version="1.0">
+
+  <jaxb:bindings schemaLocation="../xsd/CAP-v1.2.xsd" node="/xsd:schema">
+
+    <jaxb:bindings node="//xsd:element[@name='status']">
+      <jaxb:bindings node="./xsd:simpleType">
+	<jaxb:typesafeEnumClass name="StatusType" />
+      </jaxb:bindings>
+    </jaxb:bindings>
+
+    <jaxb:bindings node="//xsd:element[@name='msgType']">
+      <jaxb:bindings node="./xsd:simpleType">
+	<jaxb:typesafeEnumClass name="MsgTypeType" />
+      </jaxb:bindings>
+    </jaxb:bindings>
+
+    <jaxb:bindings node="//xsd:element[@name='scope']">
+      <jaxb:bindings node="./xsd:simpleType">
+	<jaxb:typesafeEnumClass name="ScopeType" />
+      </jaxb:bindings>
+    </jaxb:bindings>
+
+    <jaxb:bindings node="//xsd:element[@name='category']">
+      <jaxb:bindings node="./xsd:simpleType">
+	<jaxb:typesafeEnumClass name="CategoryType" />
+      </jaxb:bindings>
+    </jaxb:bindings>
+
+    <jaxb:bindings node="//xsd:element[@name='responseType']">
+      <jaxb:bindings node="./xsd:simpleType">
+	<jaxb:typesafeEnumClass name="ResponseTypeType" />
+      </jaxb:bindings>
+    </jaxb:bindings>
+
+    <jaxb:bindings node="//xsd:element[@name='urgency']">
+      <jaxb:bindings node="./xsd:simpleType">
+	<jaxb:typesafeEnumClass name="UrgencyType" />
+      </jaxb:bindings>
+    </jaxb:bindings>
+
+    <jaxb:bindings node="//xsd:element[@name='severity']">
+      <jaxb:bindings node="./xsd:simpleType">
+	<jaxb:typesafeEnumClass name="SeverityType" />
+      </jaxb:bindings>
+    </jaxb:bindings>
+
+    <jaxb:bindings node="//xsd:element[@name='certainty']">
+      <jaxb:bindings node="./xsd:simpleType">
+	<jaxb:typesafeEnumClass name="CertaintyType" />
+      </jaxb:bindings>
+    </jaxb:bindings>
+
+  </jaxb:bindings>
+
+</jaxb:bindings>
