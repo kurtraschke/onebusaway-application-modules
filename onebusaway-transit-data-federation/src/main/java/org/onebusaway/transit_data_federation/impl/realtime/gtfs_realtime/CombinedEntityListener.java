@@ -95,6 +95,9 @@ class CombinedEntityListener {
     }
 
     private void createUpdateForBlockDescriptor(BlockDescriptor block) {
+      if (block == null) {
+        return;
+      }
         BlockData bd = _dataByBlock.get(block);
 
         CombinedTripUpdatesAndVehiclePosition update = new CombinedTripUpdatesAndVehiclePosition();

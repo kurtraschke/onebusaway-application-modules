@@ -55,6 +55,8 @@ class GtfsRealtimeTripLibrary {
   private GtfsRealtimeEntitySource _entitySource;
 
   private BlockCalendarService _blockCalendarService;
+  
+  private TripMappingService _tripMappingService;
 
   /**
    * This is primarily here to assist with unit testing.
@@ -69,6 +71,10 @@ class GtfsRealtimeTripLibrary {
     _blockCalendarService = blockCalendarService;
   }
 
+  public void setTripMappingService(TripMappingService tripMappingService) {
+    _tripMappingService = tripMappingService;
+  }
+  
   public long getCurrentTime() {
     return _currentTime;
   }
@@ -258,23 +264,7 @@ class GtfsRealtimeTripLibrary {
 
   public BlockDescriptor getTripDescriptorAsBlockDescriptor(
       TripDescriptor trip) {
-    if (!trip.hasTripId()) {
-      return null;
-    }
-    TripEntry tripEntry = _entitySource.getTrip(trip.getTripId());
-    if (tripEntry == null) {
-      _log.warn("no trip found with id=" + trip.getTripId());
-      return null;
-    }
-    BlockEntry block = tripEntry.getBlock();
-    BlockDescriptor blockDescriptor = new BlockDescriptor();
-    blockDescriptor.setBlockEntry(block);
-    if (trip.hasStartDate())
-      blockDescriptor.setStartDate(trip.getStartDate());
-    if (trip.hasStartTime())
-      blockDescriptor.setStartTime(trip.getStartTime());
-
-    return blockDescriptor;
+    return _tripMappingService.getTripDescriptorAsBlockDescriptor(trip);
   }
 
   private void applyTripUpdatesToRecord(BlockDescriptor blockDescriptor,

@@ -219,7 +219,7 @@ public class ExtendedCalendarServiceImpl implements ExtendedCalendarService {
       if (_calendarService.isLocalizedServiceIdActiveOnDate(lsid, serviceDate))
         return false;
     }
-
+    
     return true;
   }
 

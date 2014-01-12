@@ -1,4 +1,5 @@
 /**
+ * Copyright (C) 2013 Kurt Raschke
  * Copyright (C) 2011 Google, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -73,6 +74,8 @@ public class GtfsRealtimeSource {
   private GtfsRealtimeFeedImpl _tripUpdatesFeed;
 
   private GtfsRealtimeFeedImpl _vehiclePositionsFeed;
+  
+  private TripMappingService _tripMappingService;
 
   @Autowired
   public void setAgencyService(AgencyService agencyService) {
@@ -136,6 +139,10 @@ public class GtfsRealtimeSource {
     _agencyIds.addAll(agencyIds);
   }
 
+  public void setTripMappingService(TripMappingService tripMappingService) {
+    _tripMappingService = tripMappingService;
+  }
+  
   @PostConstruct
   public void start() {
     if (_agencyIds.isEmpty()) {
@@ -153,9 +160,14 @@ public class GtfsRealtimeSource {
     _entitySource.setAgencyIds(_agencyIds);
     _entitySource.setTransitGraphDao(_transitGraphDao);
 
+    _tripMappingService.setBlockCalendarService(_blockCalendarService);
+    _tripMappingService.setEntitySource(_entitySource);
+    _tripMappingService.setTransitGraphDao(_transitGraphDao);
+    
     _tripsLibrary = new GtfsRealtimeTripLibrary();
     _tripsLibrary.setBlockCalendarService(_blockCalendarService);
     _tripsLibrary.setEntitySource(_entitySource);
+    _tripsLibrary.setTripMappingService(_tripMappingService);
 
     _alertLibrary = new GtfsRealtimeAlertLibrary();
     _alertLibrary.setEntitySource(_entitySource);

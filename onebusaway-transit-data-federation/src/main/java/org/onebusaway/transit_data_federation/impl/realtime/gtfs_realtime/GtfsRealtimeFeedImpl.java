@@ -53,6 +53,7 @@ import com.google.protobuf.ExtensionRegistry;
 import com.google.transit.realtime.GtfsRealtime.FeedEntity;
 import com.google.transit.realtime.GtfsRealtime.FeedHeader;
 import com.google.transit.realtime.GtfsRealtime.FeedMessage;
+import com.google.transit.realtime.GtfsRealtimeNYCT;
 import com.google.transit.realtime.GtfsRealtimeOneBusAway;
 
 /**
@@ -80,6 +81,9 @@ public class GtfsRealtimeFeedImpl implements GtfsRealtimeFeed {
         _registry.add(GtfsRealtimeOneBusAway.obaFeedEntity);
         _registry.add(GtfsRealtimeOneBusAway.obaTripUpdate);
         _registry.add(GtfsRealtimeOneBusAway.obaFeedHeader);
+        _registry.add(GtfsRealtimeNYCT.nyctFeedHeader);
+        _registry.add(GtfsRealtimeNYCT.nyctStopTimeUpdate);
+        _registry.add(GtfsRealtimeNYCT.nyctTripDescriptor);
     }
 
     public GtfsRealtimeFeedImpl(URI endpoint, int refreshInterval,
