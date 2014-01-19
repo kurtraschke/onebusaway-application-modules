@@ -653,20 +653,20 @@ class TransitDataServiceImpl implements TransitDataService {
   }
 
   @Override
-  public Boolean routeHasUpcomingScheduledService(String agencyId, long time, String routeId,
+  public Boolean routeHasUpcomingScheduledService(long time, String routeId,
 		String directionId) {
-	  return _scheduleHelperService.routeHasUpcomingScheduledService(agencyId, time, routeId, directionId);
+	  return _scheduleHelperService.routeHasUpcomingScheduledService(time, routeId, directionId);
   }
 
   @Override
-  public Boolean stopHasUpcomingScheduledService(String agencyId, long time, String stopId,
+  public Boolean stopHasUpcomingScheduledService(long time, String stopId,
 		String routeId, String directionId) {
-	  return _scheduleHelperService.stopHasUpcomingScheduledService(agencyId, time, stopId, routeId, directionId);
+	  return _scheduleHelperService.stopHasUpcomingScheduledService(time, stopId, routeId, directionId);
   }
 
   @Override
-  public List<String> getSearchSuggestions(String agencyId, String input) {
-	  return _scheduleHelperService.getSearchSuggestions(agencyId, input);
+  public List<String> getSearchSuggestions(String input) {
+	  return _scheduleHelperService.getSearchSuggestions(input);
   }
 
   /****
