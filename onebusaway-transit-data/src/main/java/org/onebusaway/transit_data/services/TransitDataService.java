@@ -564,7 +564,7 @@ public interface TransitDataService extends FederatedService {
    * @return a string representing the current bundle.
    */
   @FederatedByAggregateMethod
-  public String getActiveBundleId();
+  public List<String> getActiveBundleId();
 
   /**
    * Retrieve a list of time predictions for the given trip as represented by the TripStatusBean.

@@ -19,6 +19,7 @@ package org.onebusaway.transit_data_federation.impl.federated;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -641,8 +642,8 @@ class TransitDataServiceImpl implements TransitDataService {
   
 
   @Override
-  public String getActiveBundleId() {
-	  return _bundleManagementService.getActiveBundleId();
+  public List<String> getActiveBundleId() {
+	  return Collections.singletonList(_bundleManagementService.getActiveBundleId());
   }
 
   @Override
