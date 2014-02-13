@@ -16,14 +16,8 @@
  */
 package org.onebusaway.transit_data_federation.bundle.tasks;
 
-import java.io.IOException;
-
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
-import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.queryParser.ParseException;
 import org.onebusaway.container.refresh.RefreshService;
+import org.onebusaway.geospatial.DefaultSpatialContext;
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.transit_data_federation.impl.RefreshableResources;
 import org.onebusaway.transit_data_federation.impl.StopSearchServiceImpl;
@@ -34,19 +28,44 @@ import org.onebusaway.transit_data_federation.services.StopSearchService;
 import org.onebusaway.transit_data_federation.services.narrative.NarrativeService;
 import org.onebusaway.transit_data_federation.services.transit_graph.StopEntry;
 import org.onebusaway.transit_data_federation.services.transit_graph.TransitGraphDao;
+
+import com.spatial4j.core.context.SpatialContext;
+import com.spatial4j.core.shape.Point;
+
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.StoredField;
+import org.apache.lucene.document.StringField;
+import org.apache.lucene.document.TextField;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.IndexWriterConfig.OpenMode;
+import org.apache.lucene.spatial.SpatialStrategy;
+import org.apache.lucene.spatial.vector.PointVectorStrategy;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.util.Version;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import java.io.IOException;
 
 /**
  * Generate the underlying Lucene search index for stop searches that will power
  * {@link StopSearchServiceImpl} and {@link StopSearchService}.
- * 
+ *
  * @author bdferris
  * @see StopSearchServiceImpl
  * @see StopSearchService
  */
 @Component
 public class GenerateStopSearchIndexTask implements Runnable {
+
+  private static Logger _log = LoggerFactory.getLogger(GenerateStopSearchIndexTask.class);
 
   private TransitGraphDao _transitGraphDao;
 
@@ -55,6 +74,11 @@ public class GenerateStopSearchIndexTask implements Runnable {
   private FederatedTransitDataBundle _bundle;
 
   private RefreshService _refreshService;
+
+  private SpatialContext _spatialContext = DefaultSpatialContext.SPATIAL_CONTEXT;
+
+  private SpatialStrategy _spatialStrategy = new PointVectorStrategy(
+      _spatialContext, StopSearchIndexConstants.FIELD_STOP_LOCATION);
 
   @Autowired
   public void setTransitGraphDao(TransitGraphDao transitGraphDao) {
@@ -76,6 +100,7 @@ public class GenerateStopSearchIndexTask implements Runnable {
     _refreshService = refreshService;
   }
 
+  @Override
   public void run() {
     try {
       buildIndex();
@@ -84,15 +109,22 @@ public class GenerateStopSearchIndexTask implements Runnable {
     }
   }
 
-  private void buildIndex() throws IOException, ParseException {
-    IndexWriter writer = new IndexWriter(_bundle.getStopSearchIndexPath(),
-        new StandardAnalyzer(), true, IndexWriter.MaxFieldLength.LIMITED);
+  private void buildIndex() throws IOException {
+    Directory dir = FSDirectory.open(_bundle.getStopSearchIndexPath());
+    Analyzer analyzer = new StandardAnalyzer(Version.LUCENE_47);
+    IndexWriterConfig iwc = new IndexWriterConfig(Version.LUCENE_47, analyzer);
+
+    iwc.setOpenMode(OpenMode.CREATE);
+
+    IndexWriter writer = new IndexWriter(dir, iwc);
+
     for (StopEntry stopEntry : _transitGraphDao.getAllStops()) {
       StopNarrative narrative = _narrativeService.getStopForId(stopEntry.getId());
       Document document = getStopAsDocument(stopEntry, narrative);
       writer.addDocument(document);
     }
-    writer.optimize();
+
+    writer.forceMerge(1);
     writer.close();
     _refreshService.refresh(RefreshableResources.STOP_SEARCH_DATA);
   }
@@ -104,23 +136,46 @@ public class GenerateStopSearchIndexTask implements Runnable {
 
     // Id
     AgencyAndId id = stopEntry.getId();
-    document.add(new Field(StopSearchIndexConstants.FIELD_AGENCY_ID,
-        id.getAgencyId(), Field.Store.YES, Field.Index.NO));
-    document.add(new Field(StopSearchIndexConstants.FIELD_STOP_ID, id.getId(),
-        Field.Store.YES, Field.Index.ANALYZED));
+    document.add(new StoredField(StopSearchIndexConstants.FIELD_AGENCY_ID,
+        id.getAgencyId()));
+    document.add(new StringField(StopSearchIndexConstants.FIELD_STOP_ID,
+        id.getId(), Field.Store.YES));
+    document.add(new StringField(StopSearchIndexConstants.FIELD_AGENCY_AND_ID,
+        id.toString(), Field.Store.YES));
 
     // Code
-    if (narrative.getCode() != null && narrative.getCode().length() > 0)
-      document.add(new Field(StopSearchIndexConstants.FIELD_STOP_CODE,
-          narrative.getCode(), Field.Store.NO, Field.Index.ANALYZED));
-    else
-      document.add(new Field(StopSearchIndexConstants.FIELD_STOP_CODE,
-          stopEntry.getId().getId(), Field.Store.NO, Field.Index.ANALYZED));
+    if (isValue(narrative.getCode())) {
+      document.add(new StringField(StopSearchIndexConstants.FIELD_STOP_CODE,
+          narrative.getCode(), Field.Store.NO));
+    } else {
+      document.add(new StringField(StopSearchIndexConstants.FIELD_STOP_CODE,
+          stopEntry.getId().getId(), Field.Store.NO));
+    }
 
-    if (narrative.getName() != null && narrative.getName().length() > 0)
-      document.add(new Field(StopSearchIndexConstants.FIELD_STOP_NAME,
-          narrative.getName(), Field.Store.YES, Field.Index.ANALYZED));
+    // Name
+    if (isValue(narrative.getName())) {
+      document.add(new TextField(StopSearchIndexConstants.FIELD_STOP_NAME,
+          narrative.getName(), Field.Store.NO));
+    }
+
+    // Description
+    if (isValue(narrative.getDescription())) {
+      document.add(new TextField(
+          StopSearchIndexConstants.FIELD_STOP_DESCRIPTION,
+          narrative.getDescription(), Field.Store.NO));
+    }
+
+    // Location
+    Point stopPoint = _spatialContext.makePoint(stopEntry.getStopLon(),
+        stopEntry.getStopLat());
+    for (Field f : _spatialStrategy.createIndexableFields(stopPoint)) {
+      document.add(f);
+    }
 
     return document;
+  }
+
+  private static boolean isValue(String value) {
+    return value != null && value.length() > 0;
   }
 }

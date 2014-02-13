@@ -15,19 +15,6 @@
  */
 package org.onebusaway.transit_data_federation.impl.blocks;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import javax.annotation.PostConstruct;
-
 import org.onebusaway.collections.CollectionsLibrary;
 import org.onebusaway.collections.MappingLibrary;
 import org.onebusaway.collections.Min;
@@ -42,7 +29,8 @@ import org.onebusaway.transit_data_federation.impl.RefreshableResources;
 import org.onebusaway.transit_data_federation.impl.shapes.PointAndIndex;
 import org.onebusaway.transit_data_federation.impl.shapes.ShapePointsLibrary;
 import org.onebusaway.transit_data_federation.model.ProjectedPoint;
-import org.onebusaway.transit_data_federation.services.FederatedTransitDataBundle;
+import org.onebusaway.transit_data_federation.services.ShapeSearchService;
+import org.onebusaway.transit_data_federation.services.beans.GeospatialBeanService;
 import org.onebusaway.transit_data_federation.services.blocks.BlockCalendarService;
 import org.onebusaway.transit_data_federation.services.blocks.BlockGeospatialService;
 import org.onebusaway.transit_data_federation.services.blocks.BlockIndexService;
@@ -61,21 +49,28 @@ import org.onebusaway.transit_data_federation.services.transit_graph.BlockTripEn
 import org.onebusaway.transit_data_federation.services.transit_graph.StopEntry;
 import org.onebusaway.transit_data_federation.services.transit_graph.TransitGraphDao;
 import org.onebusaway.transit_data_federation.services.transit_graph.TripEntry;
-import org.onebusaway.utility.ObjectSerializationLibrary;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import com.vividsolutions.jts.geom.Envelope;
-import com.vividsolutions.jts.index.strtree.STRtree;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import javax.annotation.PostConstruct;
 
 @Component
 class BlockGeospatialServiceImpl implements BlockGeospatialService {
 
   private static Logger _log = LoggerFactory.getLogger(BlockGeospatialServiceImpl.class);
-
-  private FederatedTransitDataBundle _bundle;
 
   private TransitGraphDao _transitGraphDao;
 
@@ -85,18 +80,15 @@ class BlockGeospatialServiceImpl implements BlockGeospatialService {
 
   private Map<AgencyAndId, List<BlockSequenceIndex>> _blockSequenceIndicesByShapeId = new HashMap<AgencyAndId, List<BlockSequenceIndex>>();
 
-  private STRtree _tree = new STRtree();
-
   private ProjectedShapePointService _projectedShapePointService;
 
   private ShapePointsLibrary _shapePointsLibrary;
 
   private ScheduledBlockLocationService _scheduledBlockLocationService;
 
-  @Autowired
-  public void setBundle(FederatedTransitDataBundle bundle) {
-    _bundle = bundle;
-  }
+  private ShapeSearchService _shapeSearchService;
+
+  private GeospatialBeanService _geospatialBeanService;
 
   @Autowired
   public void setTransitGraphDao(TransitGraphDao transitGraphDao) {
@@ -136,31 +128,31 @@ class BlockGeospatialServiceImpl implements BlockGeospatialService {
   public void setup() throws IOException, ClassNotFoundException {
     _blockSequenceIndicesByShapeId.clear();
     groupBlockSequenceIndicesByShapeIds();
-
-    buildShapeSpatialIndex();
   }
 
   @Override
   public List<BlockInstance> getActiveScheduledBlocksPassingThroughBounds(
       CoordinateBounds bounds, long timeFrom, long timeTo) {
 
-    List<StopEntry> stops = _transitGraphDao.getStopsByLocation(bounds);
+    List<AgencyAndId> stops = _geospatialBeanService.getStopsByBounds(bounds);
 
     Set<AgencyAndId> blockIds = new HashSet<AgencyAndId>();
 
-    for (StopEntry stop : stops) {
+    for (AgencyAndId stopId : stops) {
+      StopEntry stop = _transitGraphDao.getStopEntryForId(stopId);
+
       List<BlockStopTimeIndex> stopTimeIndices = _blockIndexService.getStopTimeIndicesForStop(stop);
-      
+
       Set<BlockConfigurationEntry> blockConfigs = new HashSet<BlockConfigurationEntry>();
-      
+
       List<List<BlockConfigurationEntry>> blockConfigsList = MappingLibrary.map(stopTimeIndices, "blockConfigs");
-      
+
       for (List<BlockConfigurationEntry> l: blockConfigsList) {
         blockConfigs.addAll(l);
       }
-     
+
       List<AgencyAndId> stopBlockIds = MappingLibrary.map(blockConfigs, "block.id");
-      blockIds.addAll(stopBlockIds);      
+      blockIds.addAll(stopBlockIds);
     }
 
     Set<BlockTripIndex> blockIndices = new HashSet<BlockTripIndex>();
@@ -168,7 +160,7 @@ class BlockGeospatialServiceImpl implements BlockGeospatialService {
     for (AgencyAndId blockId: blockIds) {
       blockIndices.addAll(_blockIndexService.getBlockTripIndicesForBlock(blockId));
     }
-    
+
     List<BlockLayoverIndex> layoverIndices = Collections.emptyList();
     List<FrequencyBlockTripIndex> frequencyIndices = Collections.emptyList();
 
@@ -180,22 +172,16 @@ class BlockGeospatialServiceImpl implements BlockGeospatialService {
   public Set<BlockSequenceIndex> getBlockSequenceIndexPassingThroughBounds(
       CoordinateBounds bounds) {
 
-    Envelope env = new Envelope(bounds.getMinLon(), bounds.getMaxLon(),
-        bounds.getMinLat(), bounds.getMaxLat());
-
-    @SuppressWarnings("unchecked")
-    List<List<AgencyAndId>> results = _tree.query(env);
+    List<AgencyAndId> results = _shapeSearchService.search(bounds);
 
     Set<AgencyAndId> visitedShapeIds = new HashSet<AgencyAndId>();
     Set<BlockSequenceIndex> allIndices = new HashSet<BlockSequenceIndex>();
 
-    for (List<AgencyAndId> shapeIds : results) {
-      for (AgencyAndId shapeId : shapeIds) {
-        if (visitedShapeIds.add(shapeId)) {
-          List<BlockSequenceIndex> indices = _blockSequenceIndicesByShapeId.get(shapeId);
-          if (!CollectionsLibrary.isEmpty(indices)) {
-            allIndices.addAll(indices);
-          }
+    for (AgencyAndId shapeId : results) {
+      if (visitedShapeIds.add(shapeId)) {
+        List<BlockSequenceIndex> indices = _blockSequenceIndicesByShapeId.get(shapeId);
+        if (!CollectionsLibrary.isEmpty(indices)) {
+          allIndices.addAll(indices);
         }
       }
     }
@@ -203,6 +189,7 @@ class BlockGeospatialServiceImpl implements BlockGeospatialService {
     return allIndices;
   }
 
+  @Override
   public ScheduledBlockLocation getBestScheduledBlockLocationForLocation(
       BlockInstance blockInstance, CoordinatePoint location, long timestamp,
       double blockDistanceFrom, double blockDistanceTo) {
@@ -308,39 +295,5 @@ class BlockGeospatialServiceImpl implements BlockGeospatialService {
         list.add(index);
       }
     }
-  }
-
-  private void buildShapeSpatialIndex() throws IOException,
-      ClassNotFoundException {
-
-    File path = _bundle.getShapeGeospatialIndexDataPath();
-
-    if (!path.exists()) {
-      _tree = null;
-      return;
-    }
-
-    _log.info("loading shape point geospatial index...");
-
-    Map<CoordinateBounds, List<AgencyAndId>> shapeIdsByGridCell = ObjectSerializationLibrary.readObject(path);
-
-    _log.info("block shape geospatial nodes: " + shapeIdsByGridCell.size());
-
-    if (shapeIdsByGridCell.isEmpty()) {
-      _tree = null;
-      return;
-    }
-
-    _tree = new STRtree(shapeIdsByGridCell.size());
-
-    for (Map.Entry<CoordinateBounds, List<AgencyAndId>> entry : shapeIdsByGridCell.entrySet()) {
-      CoordinateBounds b = entry.getKey();
-      Envelope env = new Envelope(b.getMinLon(), b.getMaxLon(), b.getMinLat(),
-          b.getMaxLat());
-      List<AgencyAndId> shapeIds = entry.getValue();
-      _tree.insert(env, shapeIds);
-    }
-
-    _tree.build();
   }
 }

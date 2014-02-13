@@ -23,7 +23,7 @@ import java.io.IOException;
 import java.util.Arrays;
 
 import org.apache.lucene.index.CorruptIndexException;
-import org.apache.lucene.queryParser.ParseException;
+import org.apache.lucene.queryparser.classic.ParseException;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -78,7 +78,7 @@ public class GenerateRouteCollectionSearchIndexTaskTest {
   }
 
   @Test
-  public void testGenerateStopSearchIndex() throws CorruptIndexException,
+  public void testGenerateRouteCollectionSearchIndex() throws CorruptIndexException,
       IOException, ParseException {
 
     RouteCollectionEntryImpl routeA = routeCollection("routeA");

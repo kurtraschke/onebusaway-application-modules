@@ -28,5 +28,7 @@
     -->
 <module>
     <source path="model" />
-    <source path="services" />
+    <source path="services">
+	    <exclude name="DefaultSearchBoundsVisitor.java" />
+    </source>
 </module>

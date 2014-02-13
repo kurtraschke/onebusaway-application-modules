@@ -24,6 +24,7 @@
     <onebusaway-siri-version>1.0.4</onebusaway-siri-version>
     <opentripplanner-version>0.4.1</opentripplanner-version>
     <wiki_integration_version>1.0.0</wiki_integration_version>
+    <lucene-version>4.7.2</lucene-version>
     <!--  These properties are primarily used in configuring joint integration tests -->
     <org_onebusaway_test_port>9900</org_onebusaway_test_port>
     <org_onebusaway_test_ajp_port>9901</org_onebusaway_test_ajp_port>
@@ -87,7 +88,7 @@
     <module>onebusaway-users</module>
     <module>onebusaway-webapp</module>
   </modules>
-  
+
   <!-- This is where we control the master dependency version used by all modules -->
   <dependencyManagement>
 
@@ -219,7 +220,13 @@
       <dependency>
         <groupId>com.vividsolutions</groupId>
         <artifactId>jts</artifactId>
-        <version>1.10</version>
+        <version>1.13</version>
+      </dependency>
+
+      <dependency>
+        <groupId>com.spatial4j</groupId>
+        <artifactId>spatial4j</artifactId>
+        <version>0.4.1</version>
       </dependency>
 
       <dependency>
@@ -373,7 +380,7 @@
             </excludes>
           </configuration>
           <executions>
-            <!-- Instead, we add a special integration-test execution that runs any tests in the org.onebusaway.integration 
+            <!-- Instead, we add a special integration-test execution that runs any tests in the org.onebusaway.integration
               package -->
             <execution>
               <id>integration-tests</id>
@@ -389,7 +396,7 @@
                 <includes>
                   <include>org/onebusaway/integration/**/*Test.java</include>
                 </includes>
-                <!-- Don't stop the build if integration tests fail because we still want post-integration-test cleanup to 
+                <!-- Don't stop the build if integration tests fail because we still want post-integration-test cleanup to
                   run -->
                 <testFailureIgnore>true</testFailureIgnore>
               </configuration>
@@ -482,7 +489,7 @@
                     <report>aggregate</report>
                   </reports>
                 </reportSet>
-              </reportSets>              
+              </reportSets>
             </plugin>
           </reportPlugins>
         </configuration>

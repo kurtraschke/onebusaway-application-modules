@@ -16,13 +16,6 @@
  */
 package org.onebusaway.transit_data_federation.bundle.tasks;
 
-import java.io.IOException;
-
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
-import org.apache.lucene.document.Document;
-import org.apache.lucene.document.Field;
-import org.apache.lucene.index.IndexWriter;
-import org.apache.lucene.queryParser.ParseException;
 import org.onebusaway.container.refresh.RefreshService;
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.transit_data_federation.impl.RefreshableResources;
@@ -33,16 +26,39 @@ import org.onebusaway.transit_data_federation.services.RouteCollectionSearchInde
 import org.onebusaway.transit_data_federation.services.RouteCollectionSearchService;
 import org.onebusaway.transit_data_federation.services.narrative.NarrativeService;
 import org.onebusaway.transit_data_federation.services.transit_graph.RouteCollectionEntry;
+import org.onebusaway.transit_data_federation.services.transit_graph.RouteEntry;
+import org.onebusaway.transit_data_federation.services.transit_graph.StopEntry;
+import org.onebusaway.transit_data_federation.services.transit_graph.StopTimeEntry;
 import org.onebusaway.transit_data_federation.services.transit_graph.TransitGraphDao;
+import org.onebusaway.transit_data_federation.services.transit_graph.TripEntry;
+
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.analysis.util.CharArraySet;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.StoredField;
+import org.apache.lucene.document.StringField;
+import org.apache.lucene.document.TextField;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.IndexWriterConfig.OpenMode;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.util.Version;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.io.IOException;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Generate the underlying Lucene search index for route collection searches
  * that will power {@link RouteCollectionSearchServiceImpl} and
  * {@link RouteCollectionSearchService}.
- * 
+ *
  * @author bdferris
  * @see RouteCollectionSearchService
  * @see RouteCollectionSearchServiceImpl
@@ -78,6 +94,7 @@ public class GenerateRouteCollectionSearchIndexTask implements Runnable {
     _refreshService = refreshService;
   }
 
+  @Override
   @Transactional
   public void run() {
     try {
@@ -87,16 +104,24 @@ public class GenerateRouteCollectionSearchIndexTask implements Runnable {
     }
   }
 
-  private void buildIndex() throws IOException, ParseException {
-    IndexWriter writer = new IndexWriter(_bundle.getRouteSearchIndexPath(),
-        new StandardAnalyzer(), true, IndexWriter.MaxFieldLength.LIMITED);
+  private void buildIndex() throws IOException {
+    Directory dir = FSDirectory.open(_bundle.getRouteSearchIndexPath());
+    Analyzer analyzer = new StandardAnalyzer(Version.LUCENE_47,
+        CharArraySet.EMPTY_SET);
+    IndexWriterConfig iwc = new IndexWriterConfig(Version.LUCENE_47, analyzer);
+
+    iwc.setOpenMode(OpenMode.CREATE);
+
+    IndexWriter writer = new IndexWriter(dir, iwc);
+
     for (RouteCollectionEntry routeCollection : _transitGraphDao.getAllRouteCollections()) {
       RouteCollectionNarrative narrative = _narrativeService.getRouteCollectionForId(routeCollection.getId());
       Document document = getRouteCollectionAsDocument(routeCollection,
           narrative);
       writer.addDocument(document);
     }
-    writer.optimize();
+
+    writer.forceMerge(1);
     writer.close();
 
     _refreshService.refresh(RefreshableResources.ROUTE_COLLECTION_SEARCH_DATA);
@@ -110,25 +135,53 @@ public class GenerateRouteCollectionSearchIndexTask implements Runnable {
     Document document = new Document();
 
     // Route Collection
-    document.add(new Field(
+    document.add(new StoredField(
         RouteCollectionSearchIndexConstants.FIELD_ROUTE_COLLECTION_AGENCY_ID,
-        routeCollectionId.getAgencyId(), Field.Store.YES, Field.Index.NO));
-    document.add(new Field(
-        RouteCollectionSearchIndexConstants.FIELD_ROUTE_COLLECTION_ID,
-        routeCollectionId.getId(), Field.Store.YES, Field.Index.NO));
+        routeCollectionId.getAgencyId()));
 
-    if (isValue(narrative.getShortName()))
-      document.add(new Field(
+    document.add(new StoredField(
+        RouteCollectionSearchIndexConstants.FIELD_ROUTE_COLLECTION_ID,
+        routeCollectionId.getId()));
+
+    // Short name
+    if (isValue(narrative.getShortName())) {
+      Field f = new TextField(
           RouteCollectionSearchIndexConstants.FIELD_ROUTE_SHORT_NAME,
-          narrative.getShortName(), Field.Store.YES, Field.Index.ANALYZED));
-    if (isValue(narrative.getLongName()))
-      document.add(new Field(
+          narrative.getShortName(), Field.Store.NO);
+      document.add(f);
+    }
+
+    // Long name
+    if (isValue(narrative.getLongName())) {
+      Field f = new TextField(
           RouteCollectionSearchIndexConstants.FIELD_ROUTE_LONG_NAME,
-          narrative.getLongName(), Field.Store.NO, Field.Index.ANALYZED));
-    if (isValue(narrative.getDescription()))
-      document.add(new Field(
+          narrative.getLongName(), Field.Store.NO);
+      document.add(f);
+    }
+
+    // Description
+    if (isValue(narrative.getDescription())) {
+      document.add(new TextField(
           RouteCollectionSearchIndexConstants.FIELD_ROUTE_DESCRIPTION,
-          narrative.getDescription(), Field.Store.NO, Field.Index.ANALYZED));
+          narrative.getDescription(), Field.Store.NO));
+    }
+
+    // Stops
+    Set<StopEntry> routeCollectionStops = new HashSet<StopEntry>();
+
+    for (RouteEntry route : routeCollection.getChildren()) {
+      for (TripEntry trip : route.getTrips()) {
+        for (StopTimeEntry st : trip.getStopTimes()) {
+          routeCollectionStops.add(st.getStop());
+        }
+      }
+    }
+
+    for (StopEntry stop : routeCollectionStops) {
+      document.add(new StringField(
+          RouteCollectionSearchIndexConstants.FIELD_ROUTE_STOP_AGENCY_AND_ID,
+          stop.getId().toString(), Field.Store.YES));
+    }
 
     return document;
   }

@@ -17,16 +17,6 @@
  */
 package org.onebusaway.transit_data_federation.impl.federated;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import org.onebusaway.exceptions.NoSuchTripServiceException;
 import org.onebusaway.exceptions.OutOfServiceAreaServiceException;
 import org.onebusaway.exceptions.ServiceException;
@@ -118,8 +108,19 @@ import org.onebusaway.transit_data_federation.services.reporting.UserReportingSe
 import org.onebusaway.transit_data_federation.services.transit_graph.StopEntry;
 import org.onebusaway.transit_data_federation.services.transit_graph.TransitGraphDao;
 import org.onebusaway.transit_data_federation.services.transit_graph.TripEntry;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Component
 class TransitDataServiceImpl implements TransitDataService {
@@ -183,13 +184,13 @@ class TransitDataServiceImpl implements TransitDataService {
 
   @Autowired
   private VehicleStatusBeanService _vehicleStatusBeanService;
-  
+
   @Autowired
   private BundleManagementService _bundleManagementService;
 
   @Autowired
   private PredictionHelperService _predictionHelperService;
-  
+
   @Autowired
   private ScheduleHelperService _scheduleHelperService;
   /****
@@ -269,7 +270,7 @@ class TransitDataServiceImpl implements TransitDataService {
 
   @Override
   public StopsBean getStops(SearchQueryBean query) throws ServiceException {
-    checkBounds(query.getBounds());
+    //checkBounds(query.getBounds());
     return _stopsBeanService.getStops(query);
   }
 
@@ -434,7 +435,7 @@ class TransitDataServiceImpl implements TransitDataService {
 
   @Override
   public RoutesBean getRoutes(SearchQueryBean query) throws ServiceException {
-    checkBounds(query.getBounds());
+    //checkBounds(query.getBounds());
     return _routesBeanService.getRoutesForQuery(query);
   }
 
@@ -486,6 +487,7 @@ class TransitDataServiceImpl implements TransitDataService {
         constraints);
   }
 
+  @Override
   public List<TimedPlaceBean> getLocalPaths(String agencyId,
       ConstraintsBean constraints,
       MinTravelTimeToStopsBean minTravelTimeToStops,
@@ -495,9 +497,10 @@ class TransitDataServiceImpl implements TransitDataService {
   }
 
   /****
-   * 
+   *
    ****/
 
+  @Override
   public ListBean<VehicleLocationRecordBean> getVehicleLocationRecords(
       VehicleLocationRecordQueryBean query) {
     return _vehicleStatusBeanService.getVehicleLocations(query);
@@ -508,6 +511,7 @@ class TransitDataServiceImpl implements TransitDataService {
     _vehicleStatusBeanService.submitVehicleLocation(record);
   }
 
+  @Override
   @FederatedByEntityIdMethod
   public void resetVehicleLocation(String vehicleId) {
     AgencyAndId id = AgencyAndIdLibrary.convertFromString(vehicleId);
@@ -643,7 +647,7 @@ class TransitDataServiceImpl implements TransitDataService {
   public List<String> getAllTripProblemReportLabels() {
     return _userReportingService.getAllTripProblemReportLabels();
   }
-  
+
 
   @Override
   public String getActiveBundleId() {
@@ -711,9 +715,9 @@ class TransitDataServiceImpl implements TransitDataService {
 
     return adQuery;
   }
-  
+
   private void checkBounds(CoordinateBounds cb) {
-    if (cb == null) {
+    if (cb == null || cb.isEmpty()) {
       return;
     }
 

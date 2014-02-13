@@ -27,4 +27,8 @@ public class RouteCollectionSearchIndexConstants {
   public static final String FIELD_ROUTE_LONG_NAME = "longName";
 
   public static final String FIELD_ROUTE_DESCRIPTION = "description";
+
+  public static final String FIELD_ROUTE_STOP_AGENCY_AND_ID = "stopAgencyAndId";
+
+  public static final int MAX_EDITS = 1;
 }

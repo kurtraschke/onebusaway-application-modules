@@ -16,32 +16,45 @@
  */
 package org.onebusaway.transit_data_federation.bundle.tasks;
 
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import org.onebusaway.collections.FactoryMap;
 import org.onebusaway.container.refresh.RefreshService;
-import org.onebusaway.geospatial.model.CoordinateBounds;
-import org.onebusaway.geospatial.model.CoordinatePoint;
-import org.onebusaway.geospatial.services.SphericalGeometryLibrary;
+import org.onebusaway.geospatial.DefaultSpatialContext;
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.transit_data_federation.impl.RefreshableResources;
 import org.onebusaway.transit_data_federation.model.ShapePoints;
 import org.onebusaway.transit_data_federation.services.FederatedTransitDataBundle;
-import org.onebusaway.transit_data_federation.services.transit_graph.StopEntry;
+import org.onebusaway.transit_data_federation.services.ShapeSearchIndexConstants;
 import org.onebusaway.transit_data_federation.services.transit_graph.TransitGraphDao;
 import org.onebusaway.transit_data_federation.services.transit_graph.TripEntry;
-import org.onebusaway.utility.ObjectSerializationLibrary;
+
+import com.spatial4j.core.context.SpatialContext;
+import com.spatial4j.core.shape.Point;
+
+import org.apache.lucene.analysis.Analyzer;
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.StoredField;
+import org.apache.lucene.document.StringField;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.index.IndexWriterConfig.OpenMode;
+import org.apache.lucene.spatial.SpatialStrategy;
+import org.apache.lucene.spatial.prefix.RecursivePrefixTreeStrategy;
+import org.apache.lucene.spatial.prefix.tree.QuadPrefixTree;
+import org.apache.lucene.spatial.prefix.tree.SpatialPrefixTree;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FSDirectory;
+import org.apache.lucene.util.Version;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 @Component
 class ShapeGeospatialIndexTask implements Runnable {
@@ -56,7 +69,13 @@ class ShapeGeospatialIndexTask implements Runnable {
 
   private RefreshService _refreshService;
 
-  private double _gridSize = 500;
+  private SpatialContext _spatialContext = DefaultSpatialContext.SPATIAL_CONTEXT;
+
+  private SpatialPrefixTree _spatialPrefixTree = new QuadPrefixTree(
+      _spatialContext, ShapeSearchIndexConstants.NUM_TREE_LEVELS);
+
+  private SpatialStrategy _spatialStrategy = new RecursivePrefixTreeStrategy(
+      _spatialPrefixTree, ShapeSearchIndexConstants.FIELD_SHAPE_POINTS);
 
   @Autowired
   public void setTransitGraphDao(TransitGraphDao transitGraphDao) {
@@ -78,17 +97,10 @@ class ShapeGeospatialIndexTask implements Runnable {
     _bundle = bundle;
   }
 
-  public void setGridSize(double gridSize) {
-    _gridSize = gridSize;
-  }
-
   @Override
   public void run() {
     try {
-      Map<CoordinateBounds, List<AgencyAndId>> shapeIdsByGridCell = buildShapeSpatialIndex();
-      File path = _bundle.getShapeGeospatialIndexDataPath();
-      ObjectSerializationLibrary.writeObject(path, shapeIdsByGridCell);
-      _refreshService.refresh(RefreshableResources.SHAPE_GEOSPATIAL_INDEX);
+      buildIndex();
     } catch (Exception ex) {
       throw new IllegalStateException(
           "error creating shape geospatial index data", ex);
@@ -99,8 +111,57 @@ class ShapeGeospatialIndexTask implements Runnable {
    * Private Methods
    ****/
 
-  private Set<AgencyAndId> getAllShapeIds() {
+  private void buildIndex() throws IOException {
+    Directory dir = FSDirectory.open(_bundle.getShapeSearchIndexPath());
+    Analyzer analyzer = new StandardAnalyzer(Version.LUCENE_47);
+    IndexWriterConfig iwc = new IndexWriterConfig(Version.LUCENE_47, analyzer);
 
+    iwc.setOpenMode(OpenMode.CREATE);
+
+    IndexWriter writer = new IndexWriter(dir, iwc);
+
+    for (AgencyAndId shapeId : getAllShapeIds()) {
+      ShapePoints shapePoints = _shapePointHelper.getShapePointsForShapeId(shapeId);
+      Document document = getShapeAsDocument(shapeId, shapePoints);
+      writer.addDocument(document);
+    }
+
+    writer.forceMerge(1);
+    writer.close();
+    _refreshService.refresh(RefreshableResources.SHAPE_GEOSPATIAL_INDEX);
+  }
+
+  private Document getShapeAsDocument(AgencyAndId shapeId,
+      ShapePoints shapePoints) {
+    Document document = new Document();
+
+    document.add(new StoredField(ShapeSearchIndexConstants.FIELD_AGENCY_ID,
+        shapeId.getAgencyId()));
+    document.add(new StringField(ShapeSearchIndexConstants.FIELD_SHAPE_ID,
+        shapeId.getId(), Field.Store.YES));
+
+    for (Field f : _spatialStrategy.createIndexableFields(_spatialContext.makeLineString(shapePointsToPointList(shapePoints)))) {
+      document.add(f);
+    }
+
+    return document;
+  }
+
+  private List<Point> shapePointsToPointList(ShapePoints shapePoints) {
+    double[] lats = shapePoints.getLats();
+    double[] lons = shapePoints.getLons();
+
+    List<Point> points = new ArrayList<Point>(shapePoints.getSize());
+
+    for (int i = 0; i < shapePoints.getSize(); i++) {
+      Point stopPoint = _spatialContext.makePoint(lons[i], lats[i]);
+      points.add(stopPoint);
+    }
+
+    return points;
+  }
+
+  private Set<AgencyAndId> getAllShapeIds() {
     Set<AgencyAndId> shapeIds = new HashSet<AgencyAndId>();
 
     for (TripEntry trip : _transitGraphDao.getAllTrips()) {
@@ -111,97 +172,4 @@ class ShapeGeospatialIndexTask implements Runnable {
 
     return shapeIds;
   }
-
-  private Map<CoordinateBounds, List<AgencyAndId>> buildShapeSpatialIndex() {
-
-    Map<CoordinatePoint, Set<AgencyAndId>> shapeIdsByGridCellCorner = new FactoryMap<CoordinatePoint, Set<AgencyAndId>>(
-        new HashSet<AgencyAndId>());
-
-    CoordinateBounds fullBounds = new CoordinateBounds();
-    for (StopEntry stop : _transitGraphDao.getAllStops())
-      fullBounds.addPoint(stop.getStopLat(), stop.getStopLon());
-
-    if (fullBounds.isEmpty()) {
-      return Collections.emptyMap();
-    }
-
-    double centerLat = (fullBounds.getMinLat() + fullBounds.getMaxLat()) / 2;
-    double centerLon = (fullBounds.getMinLon() + fullBounds.getMaxLon()) / 2;
-    CoordinateBounds gridCellExample = SphericalGeometryLibrary.bounds(
-        centerLat, centerLon, _gridSize / 2);
-
-    double latStep = gridCellExample.getMaxLat() - gridCellExample.getMinLat();
-    double lonStep = gridCellExample.getMaxLon() - gridCellExample.getMinLon();
-
-    _log.info("generating shape point geospatial index...");
-
-    Set<AgencyAndId> allShapeIds = getAllShapeIds();
-
-    for (AgencyAndId shapeId : allShapeIds) {
-
-      ShapePoints shapePoints = _shapePointHelper.getShapePointsForShapeId(shapeId);
-
-      for (int i = 0; i < shapePoints.getSize(); i++) {
-
-        double lat = shapePoints.getLatForIndex(i);
-        double lon = shapePoints.getLonForIndex(i);
-
-        addGridCellForShapePoint(shapeIdsByGridCellCorner, lat, lon, latStep,
-            lonStep, shapeId);
-
-        /**
-         * If there is a particularly long stretch between shape points, we want
-         * to fill in grid cells in-between
-         */
-        if (i > 0) {
-          double prevLat = shapePoints.getLatForIndex(i - 1);
-          double prevLon = shapePoints.getLonForIndex(i - 1);
-          double totalDistance = SphericalGeometryLibrary.distance(prevLat,
-              prevLon, lat, lon);
-          for (double d = _gridSize; d < totalDistance; d += _gridSize) {
-            double r = d / totalDistance;
-            double latPart = (lat - prevLat) * r + prevLat;
-            double lonPart = (lon - prevLon) * r + prevLon;
-            addGridCellForShapePoint(shapeIdsByGridCellCorner, latPart,
-                lonPart, latStep, lonStep, shapeId);
-          }
-        }
-      }
-    }
-
-    _log.info("block shape geospatial nodes: "
-        + shapeIdsByGridCellCorner.size());
-
-    Map<CoordinateBounds, List<AgencyAndId>> shapeIdsByGridCell = new HashMap<CoordinateBounds, List<AgencyAndId>>();
-
-    for (Map.Entry<CoordinatePoint, Set<AgencyAndId>> entry : shapeIdsByGridCellCorner.entrySet()) {
-      CoordinatePoint p = entry.getKey();
-      CoordinateBounds bounds = new CoordinateBounds(p.getLat(), p.getLon(),
-          p.getLat() + latStep, p.getLon() + lonStep);
-
-      List<AgencyAndId> shapeIds = new ArrayList<AgencyAndId>(entry.getValue());
-      shapeIdsByGridCell.put(bounds, shapeIds);
-    }
-
-    return shapeIdsByGridCell;
-  }
-
-  private void addGridCellForShapePoint(
-      Map<CoordinatePoint, Set<AgencyAndId>> shapeIdsByGridCellCorner,
-      double lat, double lon, double latStep, double lonStep,
-      AgencyAndId shapeId) {
-
-    CoordinatePoint gridCellCorner = getGridCellCornerForPoint(lat, lon,
-        latStep, lonStep);
-    shapeIdsByGridCellCorner.get(gridCellCorner).add(shapeId);
-  }
-
-  private CoordinatePoint getGridCellCornerForPoint(double lat, double lon,
-      double latStep, double lonStep) {
-
-    double latCorner = Math.floor(lat / latStep) * latStep;
-    double lonCorner = Math.floor(lon / lonStep) * lonStep;
-    return new CoordinatePoint(latCorner, lonCorner);
-  }
-
 }

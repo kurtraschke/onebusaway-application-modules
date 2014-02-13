@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2011 Brian Ferris <bdferris@onebusaway.org>
+ * Copyright (C) 2014 Kurt Raschke <kurt@kurtraschke.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,22 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.onebusaway.transit_data_federation.services.beans;
 
-import org.onebusaway.geospatial.model.CoordinateBounds;
+package org.onebusaway.transit_data_federation.services;
+
+import org.onebusaway.geospatial.model.SearchBounds;
 import org.onebusaway.gtfs.model.AgencyAndId;
 
 import java.util.List;
 
 /**
- * TODO: rename this (the name is misleading and not descriptive) or move
- * the member function into some more appropriate place.
+ * Service interface for finding shapes by spatial search.
  *
- *
- * @author bdferris
+ * @author kurt
  *
  */
-public interface GeospatialBeanService {
+public interface ShapeSearchService {
 
-  public List<AgencyAndId> getStopsByBounds(CoordinateBounds bounds);
+  /**
+   * Find shapes within bounds.
+   *
+   * @param bounds search bounds
+   * @return matching shapes
+   */
+  public List<AgencyAndId> search(SearchBounds bounds);
 }

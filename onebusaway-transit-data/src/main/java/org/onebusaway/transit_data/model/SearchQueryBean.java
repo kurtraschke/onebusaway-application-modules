@@ -15,7 +15,7 @@
  */
 package org.onebusaway.transit_data.model;
 
-import org.onebusaway.geospatial.model.CoordinateBounds;
+import org.onebusaway.geospatial.model.SearchBounds;
 
 import java.io.Serializable;
 
@@ -30,12 +30,12 @@ public class SearchQueryBean implements Serializable {
 
   private EQueryType type;
 
-  private CoordinateBounds bounds;
+  private SearchBounds bounds;
 
   private String query;
 
   private int maxCount;
-  
+
   // default minimum lucene result score to keep
   private double minScoreToKeep = 1.0;
 
@@ -47,11 +47,11 @@ public class SearchQueryBean implements Serializable {
     this.type = type;
   }
 
-  public CoordinateBounds getBounds() {
+  public SearchBounds getBounds() {
     return bounds;
   }
 
-  public void setBounds(CoordinateBounds bounds) {
+  public void setBounds(SearchBounds bounds) {
     this.bounds = bounds;
   }
 

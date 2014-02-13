@@ -19,8 +19,17 @@ package org.onebusaway.transit_data_federation.services;
 public class StopSearchIndexConstants {
 
   public static final String FIELD_AGENCY_ID = "agencyId";
+
   public static final String FIELD_STOP_ID = "stopId";
+
   public static final String FIELD_STOP_NAME = "name";
+
   public static final String FIELD_STOP_CODE = "code";
+
+  public static final String FIELD_STOP_LOCATION = "location";
+
+  public static final String FIELD_STOP_DESCRIPTION = "description";
+
+  public static final String FIELD_AGENCY_AND_ID = "agencyAndId";
 
 }

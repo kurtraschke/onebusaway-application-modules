@@ -36,7 +36,7 @@ public class SphericalGeometryLibrary {
 
   /**
    * This method is fast but not very accurate
-   * 
+   *
    * @param lat1
    * @param lon1
    * @param lat2
@@ -119,13 +119,13 @@ public class SphericalGeometryLibrary {
   }
 
   /**
-   * 
+   *
    * @param lat
    * @param lon
    * @param latOffset
    * @param lonOffset
-   * @return 
-   *         CoordinateBounds(lat-latOffser,lon-lonOffset,lat+latOffset,lon+lonOffset
+   * @return
+   *         CoordinateBounds(lat-latOffset,lon-lonOffset,lat+latOffset,lon+lonOffset
    *         )
    */
   public static final CoordinateBounds boundsFromLatLonOffset(double lat,
@@ -149,13 +149,13 @@ public class SphericalGeometryLibrary {
 
   /**
    * If Wikipedia is to be trusted, then:
-   * 
+   *
    * http://en.wikipedia.org/wiki/Spherical_law_of_cosines
-   * 
+   *
    * claims that the standard ordinary planar law of cosines is a reasonable
    * approximation for the more-complex spherical law of cosines when the
    * central angles of the spherical triangle are small.
-   * 
+   *
    * @param latFrom
    * @param lonFrom
    * @param latTo
@@ -183,7 +183,7 @@ public class SphericalGeometryLibrary {
   /**
    * Note that this is an approximate method at best that will perform
    * increasingly worse as the distance between the points increases.
-   * 
+   *
    * @param point
    * @param segmentStart
    * @param segmentEnd

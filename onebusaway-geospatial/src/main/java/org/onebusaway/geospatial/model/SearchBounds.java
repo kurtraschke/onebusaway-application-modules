@@ -1,5 +1,5 @@
 /**
- * Copyright (C) 2011 Brian Ferris <bdferris@onebusaway.org>
+ * Copyright (C) 2014 Kurt Raschke <kurt@kurtraschke.com>
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,22 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.onebusaway.transit_data_federation.services.beans;
 
-import org.onebusaway.geospatial.model.CoordinateBounds;
-import org.onebusaway.gtfs.model.AgencyAndId;
+package org.onebusaway.geospatial.model;
 
-import java.util.List;
+public interface SearchBounds {
 
-/**
- * TODO: rename this (the name is misleading and not descriptive) or move
- * the member function into some more appropriate place.
- *
- *
- * @author bdferris
- *
- */
-public interface GeospatialBeanService {
+  public void accept(SearchBoundsVisitor visitor);
 
-  public List<AgencyAndId> getStopsByBounds(CoordinateBounds bounds);
 }

@@ -17,20 +17,14 @@ package org.onebusaway.transit_data_federation.bundle.tasks;
 
 import static org.junit.Assert.assertEquals;
 import static org.onebusaway.transit_data_federation.testing.UnitTestingSupport.aid;
-import static org.onebusaway.transit_data_federation.testing.UnitTestingSupport.*;
+import static org.onebusaway.transit_data_federation.testing.UnitTestingSupport.stop;
+import static org.onebusaway.transit_data_federation.testing.UnitTestingSupport.trip;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-
-import org.junit.Test;
-import org.mockito.Mockito;
 import org.onebusaway.container.refresh.RefreshService;
 import org.onebusaway.geospatial.model.CoordinateBounds;
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.transit_data_federation.impl.RefreshableResources;
+import org.onebusaway.transit_data_federation.impl.ShapeSearchServiceImpl;
 import org.onebusaway.transit_data_federation.impl.transit_graph.TripEntryImpl;
 import org.onebusaway.transit_data_federation.model.ShapePoints;
 import org.onebusaway.transit_data_federation.model.ShapePointsFactory;
@@ -38,7 +32,13 @@ import org.onebusaway.transit_data_federation.services.FederatedTransitDataBundl
 import org.onebusaway.transit_data_federation.services.transit_graph.StopEntry;
 import org.onebusaway.transit_data_federation.services.transit_graph.TransitGraphDao;
 import org.onebusaway.transit_data_federation.services.transit_graph.TripEntry;
-import org.onebusaway.utility.ObjectSerializationLibrary;
+
+import org.junit.Test;
+import org.mockito.Mockito;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Arrays;
 
 public class ShapeGeospatialIndexTaskTest {
 
@@ -52,7 +52,7 @@ public class ShapeGeospatialIndexTaskTest {
     path.delete();
     path.deleteOnExit();
     FederatedTransitDataBundle bundle = Mockito.mock(FederatedTransitDataBundle.class);
-    Mockito.when(bundle.getShapeGeospatialIndexDataPath()).thenReturn(path);
+    Mockito.when(bundle.getShapeSearchIndexPath()).thenReturn(path);
     task.setBundle(bundle);
 
     RefreshService refreshService = Mockito.mock(RefreshService.class);
@@ -103,24 +103,25 @@ public class ShapeGeospatialIndexTaskTest {
     Mockito.verify(refreshService).refresh(
         RefreshableResources.SHAPE_GEOSPATIAL_INDEX);
 
-    Map<CoordinateBounds, List<AgencyAndId>> shapeIdsByBounds = ObjectSerializationLibrary.readObject(path);
-    assertEquals(5, shapeIdsByBounds.size());
+   ShapeSearchServiceImpl searchService = new ShapeSearchServiceImpl();
+   searchService.setBundle(bundle);
+   searchService.initialize();
 
     CoordinateBounds b = new CoordinateBounds(47.65048049686506,
         -122.30767397879845, 47.654977097836735, -122.300997795721);
-    assertEquals(Arrays.asList(shapeIdA), shapeIdsByBounds.get(b));
+    assertEquals(Arrays.asList(shapeIdA), searchService.search(b));
 
     b = new CoordinateBounds(47.65947369880841, -122.32102634495334,
         47.66397029978009, -122.3143501618759);
-    assertEquals(Arrays.asList(shapeIdB), shapeIdsByBounds.get(b));
+    assertEquals(Arrays.asList(shapeIdB), searchService.search(b));
     b = new CoordinateBounds(47.66397029978009, -122.32770252803078,
         47.66846690075177, -122.32102634495334);
-    assertEquals(Arrays.asList(shapeIdB), shapeIdsByBounds.get(b));
+    assertEquals(Arrays.asList(shapeIdB), searchService.search(b));
     b = new CoordinateBounds(47.65947369880841, -122.3143501618759,
         47.66397029978009, -122.30767397879845);
-    assertEquals(Arrays.asList(shapeIdB), shapeIdsByBounds.get(b));
+    assertEquals(Arrays.asList(shapeIdB), searchService.search(b));
     b = new CoordinateBounds(47.65947369880841, -122.32770252803078,
         47.66397029978009, -122.32102634495334);
-    assertEquals(Arrays.asList(shapeIdB), shapeIdsByBounds.get(b));
+    assertEquals(Arrays.asList(shapeIdB), searchService.search(b));
   }
 }

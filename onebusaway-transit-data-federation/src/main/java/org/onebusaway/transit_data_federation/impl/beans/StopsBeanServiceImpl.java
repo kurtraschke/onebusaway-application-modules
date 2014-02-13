@@ -16,19 +16,9 @@
  */
 package org.onebusaway.transit_data_federation.impl.beans;
 
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
-import org.apache.lucene.queryParser.ParseException;
-import org.onebusaway.collections.Min;
-import org.onebusaway.exceptions.InvalidArgumentServiceException;
 import org.onebusaway.exceptions.NoSuchAgencyServiceException;
 import org.onebusaway.exceptions.ServiceException;
-import org.onebusaway.geospatial.model.CoordinateBounds;
-import org.onebusaway.geospatial.model.CoordinatePoint;
-import org.onebusaway.geospatial.services.SphericalGeometryLibrary;
+import org.onebusaway.geospatial.model.SearchBounds;
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.transit_data.model.ListBean;
 import org.onebusaway.transit_data.model.SearchQueryBean;
@@ -37,16 +27,23 @@ import org.onebusaway.transit_data.model.StopsBean;
 import org.onebusaway.transit_data_federation.model.SearchResult;
 import org.onebusaway.transit_data_federation.services.AgencyAndIdLibrary;
 import org.onebusaway.transit_data_federation.services.StopSearchService;
-import org.onebusaway.transit_data_federation.services.beans.GeospatialBeanService;
+import org.onebusaway.transit_data_federation.services.StopSearchService.SearchMode;
 import org.onebusaway.transit_data_federation.services.beans.StopBeanService;
 import org.onebusaway.transit_data_federation.services.beans.StopsBeanService;
 import org.onebusaway.transit_data_federation.services.transit_graph.AgencyEntry;
 import org.onebusaway.transit_data_federation.services.transit_graph.StopEntry;
 import org.onebusaway.transit_data_federation.services.transit_graph.TransitGraphDao;
+
+import org.apache.lucene.queryparser.classic.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 @Component
 class StopsBeanServiceImpl implements StopsBeanService {
@@ -62,26 +59,26 @@ class StopsBeanServiceImpl implements StopsBeanService {
   private StopBeanService _stopBeanService;
 
   @Autowired
-  private GeospatialBeanService _geospatialBeanService;
-
-  @Autowired
   private TransitGraphDao _transitGraphDao;
 
   @Override
   public StopsBean getStops(SearchQueryBean queryBean) throws ServiceException {
     String query = queryBean.getQuery();
-    if (query == null)
-      return getStopsByBounds(queryBean);
-    else
-      return getStopsByBoundsAndQuery(queryBean);
-  }
+    SearchBounds bounds = queryBean.getBounds();
+    int maxCount = queryBean.getMaxCount();
+    SearchResult<AgencyAndId> sr = null;
 
-  private StopsBean getStopsByBounds(SearchQueryBean queryBean)
-      throws ServiceException {
+    try {
+       sr = _searchService.search(query, SearchMode.ALL, bounds, maxCount, MIN_SCORE);
+    } catch (ParseException e) {
+      _log.error("error executing stop search", e);
+      throw new ServiceException();
+    } catch (IOException e) {
+      _log.error("error executing stop search", e);
+      throw new ServiceException();
+    }
 
-    CoordinateBounds bounds = queryBean.getBounds();
-
-    List<AgencyAndId> stopIds = _geospatialBeanService.getStopsByBounds(bounds);
+    List<AgencyAndId> stopIds = sr.getResults();
 
     boolean limitExceeded = BeanServiceSupport.checkLimitExceeded(stopIds,
         queryBean.getMaxCount());
@@ -89,8 +86,9 @@ class StopsBeanServiceImpl implements StopsBeanService {
 
     for (AgencyAndId stopId : stopIds) {
       StopBean stopBean = _stopBeanService.getStopForId(stopId);
-      if (stopBean == null)
+      if (stopBean == null) {
         throw new ServiceException();
+      }
 
       /**
        * If the stop doesn't have any routes actively serving it, don't include
@@ -103,48 +101,7 @@ class StopsBeanServiceImpl implements StopsBeanService {
     }
 
     return constructResult(stopBeans, limitExceeded);
-  }
 
-  private StopsBean getStopsByBoundsAndQuery(SearchQueryBean queryBean)
-      throws ServiceException {
-
-    CoordinateBounds bounds = queryBean.getBounds();
-    String query = queryBean.getQuery();
-    int maxCount = queryBean.getMaxCount();
-
-    CoordinatePoint center = SphericalGeometryLibrary.getCenterOfBounds(bounds);
-
-    SearchResult<AgencyAndId> stops;
-    try {
-      stops = _searchService.searchForStopsByCode(query, 10, MIN_SCORE);
-    } catch (ParseException e) {
-      throw new InvalidArgumentServiceException("query", "queryParseError");
-    } catch (IOException e) {
-      _log.error("error executing stop search: query=" + query, e);
-      e.printStackTrace();
-      throw new ServiceException();
-    }
-
-    Min<StopBean> closest = new Min<StopBean>();
-    List<StopBean> stopBeans = new ArrayList<StopBean>();
-
-    for (AgencyAndId aid : stops.getResults()) {
-      StopBean stopBean = _stopBeanService.getStopForId(aid);
-      if (bounds.contains(stopBean.getLat(), stopBean.getLon()))
-        stopBeans.add(stopBean);
-      double distance = SphericalGeometryLibrary.distance(center.getLat(),
-          center.getLon(), stopBean.getLat(), stopBean.getLon());
-      closest.add(distance, stopBean);
-    }
-
-    boolean limitExceeded = BeanServiceSupport.checkLimitExceeded(stopBeans,
-        maxCount);
-
-    // If nothing was found in range, add the closest result
-    if (stopBeans.isEmpty() && !closest.isEmpty())
-      stopBeans.add(closest.getMinElement());
-
-    return constructResult(stopBeans, limitExceeded);
   }
 
   @Override

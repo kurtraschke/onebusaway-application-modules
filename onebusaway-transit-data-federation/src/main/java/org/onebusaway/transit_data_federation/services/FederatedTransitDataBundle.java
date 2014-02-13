@@ -23,7 +23,7 @@ import java.util.List;
 /**
  * Captures the file structure of various file artifacts of a federated transit
  * data bundle. All artifact file paths are relative to a base path.
- * 
+ *
  * @author bdferris
  */
 public class FederatedTransitDataBundle {
@@ -100,8 +100,8 @@ public class FederatedTransitDataBundle {
     return new File(_path, "StopTransfers.obj");
   }
 
-  public File getShapeGeospatialIndexDataPath() {
-    return new File(_path, "ShapeGeospatialIndexData.obj.gz");
+  public File getShapeSearchIndexPath() {
+    return new File(_path, "ShapeSearchIndex");
   }
 
   public File getHubStopsPath(boolean keyed) {

@@ -15,24 +15,22 @@
  */
 package org.onebusaway.api.actions.api.where;
 
-import java.io.IOException;
-
-import org.apache.struts2.rest.DefaultHttpHeaders;
-import org.onebusaway.api.actions.api.ApiActionSupport;
+import org.onebusaway.api.actions.api.SpatialActionSupport;
 import org.onebusaway.api.impl.MaxCountSupport;
 import org.onebusaway.api.model.transit.BeanFactoryV2;
 import org.onebusaway.api.model.transit.RouteV2Bean;
 import org.onebusaway.exceptions.OutOfServiceAreaServiceException;
 import org.onebusaway.exceptions.ServiceException;
-import org.onebusaway.geospatial.model.CoordinateBounds;
-import org.onebusaway.geospatial.services.SphericalGeometryLibrary;
 import org.onebusaway.transit_data.model.RoutesBean;
 import org.onebusaway.transit_data.model.SearchQueryBean;
-import org.onebusaway.transit_data.model.SearchQueryBean.EQueryType;
 import org.onebusaway.transit_data.services.TransitDataService;
+
+import org.apache.struts2.rest.DefaultHttpHeaders;
 import org.springframework.beans.factory.annotation.Autowired;
 
-public class RoutesForLocationAction extends ApiActionSupport {
+import java.io.IOException;
+
+public class RoutesForLocationAction extends SpatialActionSupport {
 
   private static final long serialVersionUID = 1L;
 
@@ -47,42 +45,12 @@ public class RoutesForLocationAction extends ApiActionSupport {
   @Autowired
   private TransitDataService _service;
 
-  private double _lat;
-
-  private double _lon;
-
-  private double _radius;
-
-  private double _latSpan;
-
-  private double _lonSpan;
-
   private String _query;
 
   private MaxCountSupport _maxCount = new MaxCountSupport(10, 50);
 
   public RoutesForLocationAction() {
     super(LegacyV1ApiSupport.isDefaultToV1() ? V1 : V2);
-  }
-
-  public void setLat(double lat) {
-    _lat = lat;
-  }
-
-  public void setLon(double lon) {
-    _lon = lon;
-  }
-
-  public void setLatSpan(double latSpan) {
-    _latSpan = latSpan;
-  }
-
-  public void setLonSpan(double lonSpan) {
-    _lonSpan = lonSpan;
-  }
-
-  public void setRadius(double radius) {
-    _radius = radius;
   }
 
   public void setQuery(String query) {
@@ -98,6 +66,7 @@ public class RoutesForLocationAction extends ApiActionSupport {
   }
 
   public DefaultHttpHeaders index() throws IOException, ServiceException {
+    validateSpatialArgs();
 
     int maxCount = _maxCount.getMaxCount();
     if (maxCount <= 0)
@@ -106,16 +75,13 @@ public class RoutesForLocationAction extends ApiActionSupport {
     if (hasErrors())
       return setValidationErrorsResponse();
 
-    CoordinateBounds bounds = getSearchBounds();
-
     SearchQueryBean routesQuery = new SearchQueryBean();
 
     if (_query != null)
       routesQuery.setQuery(_query);
 
-    routesQuery.setBounds(bounds);
+    routesQuery.setBounds(getBounds(_query == null ? DEFAULT_SEARCH_RADIUS_WITHOUT_QUERY : DEFAULT_SEARCH_RADIUS_WITH_QUERY));
     routesQuery.setMaxCount(maxCount);
-    routesQuery.setType(EQueryType.BOUNDS_OR_CLOSEST);
 
     try {
       RoutesBean result = _service.getRoutes(routesQuery);
@@ -144,23 +110,6 @@ public class RoutesForLocationAction extends ApiActionSupport {
       return setOkResponse(factory.getEmptyList(RouteV2Bean.class, true));
     } else {
       return setUnknownVersionResponse();
-    }
-  }
-
-  private CoordinateBounds getSearchBounds() {
-
-    if (_radius > 0) {
-      return SphericalGeometryLibrary.bounds(_lat, _lon, _radius);
-    } else if (_latSpan > 0 && _lonSpan > 0) {
-      return SphericalGeometryLibrary.boundsFromLatLonOffset(_lat, _lon,
-          _latSpan / 2, _lonSpan / 2);
-    } else {
-      if (_query != null)
-        return SphericalGeometryLibrary.bounds(_lat, _lon,
-            DEFAULT_SEARCH_RADIUS_WITH_QUERY);
-      else
-        return SphericalGeometryLibrary.bounds(_lat, _lon,
-            DEFAULT_SEARCH_RADIUS_WITHOUT_QUERY);
     }
   }
 }

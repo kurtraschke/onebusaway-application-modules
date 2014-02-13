@@ -16,44 +16,54 @@
  */
 package org.onebusaway.transit_data_federation.impl;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
-import javax.annotation.PostConstruct;
-
-import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
-import org.apache.lucene.document.Document;
-import org.apache.lucene.index.IndexReader;
-import org.apache.lucene.queryParser.MultiFieldQueryParser;
-import org.apache.lucene.queryParser.ParseException;
-import org.apache.lucene.queryParser.QueryParser;
-import org.apache.lucene.search.IndexSearcher;
-import org.apache.lucene.search.Query;
-import org.apache.lucene.search.ScoreDoc;
-import org.apache.lucene.search.Searcher;
-import org.apache.lucene.search.TopDocCollector;
-import org.apache.lucene.search.TopDocs;
 import org.onebusaway.container.refresh.Refreshable;
+import org.onebusaway.geospatial.DefaultSpatialContext;
+import org.onebusaway.geospatial.model.SearchBounds;
+import org.onebusaway.geospatial.services.DefaultSearchBoundsVisitor;
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.transit_data_federation.model.SearchResult;
 import org.onebusaway.transit_data_federation.services.FederatedTransitDataBundle;
 import org.onebusaway.transit_data_federation.services.RouteCollectionSearchIndexConstants;
 import org.onebusaway.transit_data_federation.services.RouteCollectionSearchService;
+import org.onebusaway.transit_data_federation.services.StopSearchIndexConstants;
+
+import com.spatial4j.core.context.SpatialContext;
+import com.spatial4j.core.shape.Shape;
+
+import org.apache.lucene.document.Document;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.Term;
+import org.apache.lucene.queryparser.classic.ParseException;
+import org.apache.lucene.search.BooleanClause.Occur;
+import org.apache.lucene.search.BooleanQuery;
+import org.apache.lucene.search.FuzzyQuery;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.search.join.JoinUtil;
+import org.apache.lucene.search.join.ScoreMode;
+import org.apache.lucene.spatial.SpatialStrategy;
+import org.apache.lucene.spatial.query.SpatialArgs;
+import org.apache.lucene.spatial.query.SpatialOperation;
+import org.apache.lucene.spatial.vector.PointVectorStrategy;
+import org.apache.lucene.store.FSDirectory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.annotation.PostConstruct;
 
 @Component
 public class RouteCollectionSearchServiceImpl implements
     RouteCollectionSearchService {
-
-  private static Analyzer _analyzer = new StandardAnalyzer();
 
   private static String[] NAME_FIELDS = {
       RouteCollectionSearchIndexConstants.FIELD_ROUTE_SHORT_NAME,
@@ -61,7 +71,14 @@ public class RouteCollectionSearchServiceImpl implements
 
   private FederatedTransitDataBundle _bundle;
 
-  private Searcher _searcher;
+  private IndexSearcher _routeSearcher;
+
+  private IndexSearcher _stopSearcher;
+
+  private SpatialContext _spatialContext = DefaultSpatialContext.SPATIAL_CONTEXT;
+
+  private SpatialStrategy _spatialStrategy = new PointVectorStrategy(
+      _spatialContext, StopSearchIndexConstants.FIELD_STOP_LOCATION);
 
   @Autowired
   public void setBundle(FederatedTransitDataBundle bundle) {
@@ -69,69 +86,97 @@ public class RouteCollectionSearchServiceImpl implements
   }
 
   @PostConstruct
-  @Refreshable(dependsOn = RefreshableResources.ROUTE_COLLECTION_SEARCH_DATA)
+  @Refreshable(dependsOn = {
+      RefreshableResources.ROUTE_COLLECTION_SEARCH_DATA,
+      RefreshableResources.STOP_SEARCH_DATA})
   public void initialize() throws IOException {
 
-    File path = _bundle.getRouteSearchIndexPath();
+    File routeIndexPath = _bundle.getRouteSearchIndexPath();
+    File stopIndexPath = _bundle.getStopSearchIndexPath();
 
-    if (path.exists()) {
-      IndexReader reader = IndexReader.open(path);
-      _searcher = new IndexSearcher(reader);
+    if (routeIndexPath != null && routeIndexPath.exists()) {
+      IndexReader reader = DirectoryReader.open(FSDirectory.open(routeIndexPath));
+      _routeSearcher = new IndexSearcher(reader);
     } else {
-      _searcher = null;
+      _routeSearcher = null;
     }
+
+    if (stopIndexPath != null && stopIndexPath.exists()) {
+      IndexReader reader = DirectoryReader.open(FSDirectory.open(stopIndexPath));
+      _stopSearcher = new IndexSearcher(reader);
+    } else {
+      _stopSearcher = null;
+    }
+
   }
 
-  public SearchResult<AgencyAndId> searchForRoutesByName(String value,
+  @Override
+  public SearchResult<AgencyAndId> search(String query, SearchBounds bounds,
       int maxResultCount, double minScoreToKeep) throws IOException,
       ParseException {
 
-    return search(new MultiFieldQueryParser(NAME_FIELDS, _analyzer), value,
-        maxResultCount, minScoreToKeep);
-  }
+    BooleanQuery searchQuery = new BooleanQuery();
 
-  private SearchResult<AgencyAndId> search(QueryParser parser, String value,
-      int maxResultCount, double minScoreToKeep) throws IOException,
-      ParseException {
-
-    if (_searcher == null)
+    if (_routeSearcher == null) {
       return new SearchResult<AgencyAndId>();
+    }
 
-    TopDocCollector collector = new TopDocCollector(maxResultCount);
+    if (query != null && query.length() == 0) {
+      query = null;
+    }
 
-    Query query = parser.parse(value);
-    _searcher.search(query, collector);
+    if (query == null && bounds == null) {
+      throw new IllegalArgumentException(
+          "one or more of query, bounds must be non-null");
+    }
 
-    TopDocs top = collector.topDocs();
+    if (query != null) {
+      for (String fieldName : NAME_FIELDS) {
+        BooleanQuery fieldQuery = new BooleanQuery();
+        for (String termString : query.split(" ")) {
+          FuzzyQuery fuzzyQuery = new FuzzyQuery(
+              new Term(fieldName, termString), RouteCollectionSearchIndexConstants.MAX_EDITS);
+          fieldQuery.add(fuzzyQuery, Occur.MUST);
+        }
+        searchQuery.add(fieldQuery, Occur.SHOULD);
+      }
+    }
 
+    if (_stopSearcher != null && bounds != null) {
+      DefaultSearchBoundsVisitor v = new DefaultSearchBoundsVisitor();
+      bounds.accept(v);
+      Shape shape = v.getShape();
+      SpatialArgs sa = new SpatialArgs(SpatialOperation.IsWithin, shape);
+
+      Query spatialQuery = _spatialStrategy.makeQuery(sa);
+
+      Query spatialJoinQuery = JoinUtil.createJoinQuery(
+          StopSearchIndexConstants.FIELD_AGENCY_AND_ID, false,
+          RouteCollectionSearchIndexConstants.FIELD_ROUTE_STOP_AGENCY_AND_ID,
+          spatialQuery, _stopSearcher, ScoreMode.Max);
+
+      searchQuery.add(spatialJoinQuery, Occur.MUST);
+    }
+
+    TopDocs top = _routeSearcher.search(searchQuery, maxResultCount);
     Map<AgencyAndId, Float> topScores = new HashMap<AgencyAndId, Float>();
 
-    String lowerCaseQueryValue = value.toLowerCase();
-
     for (ScoreDoc sd : top.scoreDocs) {
-      Document document = _searcher.doc(sd.doc);
-
-      String routeShortName = document.get(RouteCollectionSearchIndexConstants.FIELD_ROUTE_SHORT_NAME);
-
-      Set<String> tokens = new HashSet<String>();
-      if (routeShortName != null) {
-        for (String token : routeShortName.toLowerCase().split("\\b")) {
-          if (!token.isEmpty())
-            tokens.add(token);
-        }
-      }
+      Document document = _routeSearcher.doc(sd.doc);
 
       // Result must have a minimum score to qualify
-      if (sd.score < minScoreToKeep && !tokens.contains(lowerCaseQueryValue))
+      if (sd.score < minScoreToKeep) {
         continue;
+      }
 
       // Keep the best score for a particular id
       String agencyId = document.get(RouteCollectionSearchIndexConstants.FIELD_ROUTE_COLLECTION_AGENCY_ID);
       String id = document.get(RouteCollectionSearchIndexConstants.FIELD_ROUTE_COLLECTION_ID);
       AgencyAndId routeId = new AgencyAndId(agencyId, id);
       Float score = topScores.get(routeId);
-      if (score == null || score < sd.score)
+      if (score == null || score < sd.score) {
         topScores.put(routeId, sd.score);
+      }
     }
 
     List<AgencyAndId> ids = new ArrayList<AgencyAndId>(topScores.size());
@@ -145,5 +190,14 @@ public class RouteCollectionSearchServiceImpl implements
     }
 
     return new SearchResult<AgencyAndId>(ids, scores);
+
   }
+
+  @Override
+  public SearchResult<AgencyAndId> searchForRoutesByName(String value,
+      int maxResultCount, double minScoreToKeep) throws IOException,
+      ParseException {
+    return search(value, null, maxResultCount, minScoreToKeep);
+  }
+
 }

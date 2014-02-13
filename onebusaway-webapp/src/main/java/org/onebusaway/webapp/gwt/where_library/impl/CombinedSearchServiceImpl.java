@@ -37,7 +37,7 @@ public class CombinedSearchServiceImpl implements CombinedSearchService {
   public void search(SearchQueryBean query, int placeTimeoutMillis,
       AsyncCallback<CombinedSearchResult> callback) {
 
-    LatLngBounds originalBounds = getBounds(query.getBounds());
+    LatLngBounds originalBounds = getBounds((CoordinateBounds) query.getBounds());
     System.out.println(query.getBounds());
     System.out.println(originalBounds);
 

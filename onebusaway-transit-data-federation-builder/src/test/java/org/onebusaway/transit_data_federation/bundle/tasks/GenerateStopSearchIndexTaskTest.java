@@ -20,16 +20,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.onebusaway.transit_data_federation.testing.UnitTestingSupport.stop;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Arrays;
-
-import org.apache.lucene.index.CorruptIndexException;
-import org.apache.lucene.queryParser.ParseException;
-import org.junit.Before;
-import org.junit.Test;
-import org.mockito.Mockito;
 import org.onebusaway.container.refresh.RefreshService;
+import org.onebusaway.geospatial.model.CoordinateBounds;
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.transit_data_federation.impl.StopSearchServiceImpl;
 import org.onebusaway.transit_data_federation.impl.transit_graph.StopEntryImpl;
@@ -39,6 +31,17 @@ import org.onebusaway.transit_data_federation.services.FederatedTransitDataBundl
 import org.onebusaway.transit_data_federation.services.narrative.NarrativeService;
 import org.onebusaway.transit_data_federation.services.transit_graph.StopEntry;
 import org.onebusaway.transit_data_federation.services.transit_graph.TransitGraphDao;
+
+import org.apache.lucene.index.CorruptIndexException;
+import org.apache.lucene.queryparser.classic.ParseException;
+import org.junit.Before;
+import org.junit.Test;
+import org.mockito.Mockito;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.List;
 
 public class GenerateStopSearchIndexTaskTest {
 
@@ -82,15 +85,16 @@ public class GenerateStopSearchIndexTaskTest {
   public void testGenerateStopSearchIndex() throws CorruptIndexException,
       IOException, ParseException {
 
-    StopEntryImpl stopA = stop("111", 0, 0);
-    StopEntryImpl stopB = stop("222", 0, 0);
-    StopEntryImpl stopC = stop("333", 0, 0);
+    StopEntryImpl stopA = stop("921", -0.5, -0.5);
+    StopEntryImpl stopB = stop("921S", -0.5, 0.5);
+    StopEntryImpl stopC = stop("333", 0.5, -0.5);
 
     StopNarrative.Builder stopNarrativeA = StopNarrative.builder();
-    stopNarrativeA.setCode("111");
+    stopNarrativeA.setCode("921");
     stopNarrativeA.setName("AAA Station");
 
     StopNarrative.Builder stopNarrativeB = StopNarrative.builder();
+    stopNarrativeB.setCode("921S");
     stopNarrativeB.setName("BBB Station");
 
     StopNarrative.Builder stopNarrativeC = StopNarrative.builder();
@@ -112,14 +116,13 @@ public class GenerateStopSearchIndexTaskTest {
     StopSearchServiceImpl searchService = new StopSearchServiceImpl();
     searchService.setBundle(_bundle);
     searchService.initialize();
-    SearchResult<AgencyAndId> ids = searchService.searchForStopsByCode("111",
-        10, MIN_SCORE);
+    SearchResult<AgencyAndId> ids = searchService.searchForStopsByCode("921", 10, MIN_SCORE);
     assertEquals(1, ids.size());
-    assertEquals(new AgencyAndId("1", "111"), ids.getResult(0));
+    assertEquals(new AgencyAndId("1", "921"), ids.getResult(0));
 
-    ids = searchService.searchForStopsByCode("222", 10, MIN_SCORE);
+    ids = searchService.searchForStopsByCode("921S", 10, MIN_SCORE);
     assertEquals(1, ids.size());
-    assertTrue(ids.getResults().contains(new AgencyAndId("1", "222")));
+    assertTrue(ids.getResults().contains(new AgencyAndId("1", "921S")));
 
     ids = searchService.searchForStopsByCode("333", 10, MIN_SCORE);
     assertEquals(0, ids.size());
@@ -127,5 +130,28 @@ public class GenerateStopSearchIndexTaskTest {
     ids = searchService.searchForStopsByCode("444", 10, MIN_SCORE);
     assertEquals(1, ids.size());
     assertTrue(ids.getResults().contains(new AgencyAndId("1", "333")));
+
+    List<AgencyAndId> stops = searchService.getStopsByBounds(new CoordinateBounds(
+        -1, -1, 0, 0));
+    assertEquals(1, stops.size());
+    assertTrue(stops.contains(stopA.getId()));
+
+    stops = searchService.getStopsByBounds(new CoordinateBounds(0, -1, 1, 0));
+    assertEquals(1, stops.size());
+    assertTrue(stops.contains(stopC.getId()));
+
+    stops = searchService.getStopsByBounds(new CoordinateBounds(-1, -1, 1, 0));
+    assertEquals(2, stops.size());
+    assertTrue(stops.contains(stopA.getId()));
+    assertTrue(stops.contains(stopC.getId()));
+
+    stops = searchService.getStopsByBounds(new CoordinateBounds(-1, -1, 1, 1));
+    assertEquals(3, stops.size());
+    assertTrue(stops.contains(stopA.getId()));
+    assertTrue(stops.contains(stopB.getId()));
+    assertTrue(stops.contains(stopC.getId()));
+
+    stops = searchService.getStopsByBounds(new CoordinateBounds(0.8, 0.8, 1, 1));
+    assertEquals(0, stops.size());
   }
 }

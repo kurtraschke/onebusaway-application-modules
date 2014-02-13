@@ -17,7 +17,7 @@ package org.onebusaway.geospatial.model;
 
 import java.io.Serializable;
 
-public final class CoordinateBounds implements Serializable {
+public final class CoordinateBounds implements Serializable, SearchBounds {
 
   private static final long serialVersionUID = 1L;
 
@@ -108,7 +108,7 @@ public final class CoordinateBounds implements Serializable {
     addPoint(bounds.getMinLat(), bounds.getMinLon());
     addPoint(bounds.getMaxLat(), bounds.getMaxLon());
   }
-  
+
   public void clear() {
     _empty = true;
   }
@@ -186,6 +186,11 @@ public final class CoordinateBounds implements Serializable {
     if (_minLon != other._minLon)
       return false;
     return true;
+  }
+
+  @Override
+  public void accept(SearchBoundsVisitor visitor) {
+    visitor.visit(this);
   }
 
 }
