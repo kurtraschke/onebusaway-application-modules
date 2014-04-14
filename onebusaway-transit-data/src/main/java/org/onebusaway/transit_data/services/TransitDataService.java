@@ -16,10 +16,6 @@
  */
 package org.onebusaway.transit_data.services;
 
-import java.util.Collection;
-import java.util.Date;
-import java.util.List;
-
 import org.onebusaway.exceptions.NoSuchStopServiceException;
 import org.onebusaway.exceptions.ServiceException;
 import org.onebusaway.federations.FederatedService;
@@ -40,6 +36,7 @@ import org.onebusaway.transit_data.model.AgencyWithCoverageBean;
 import org.onebusaway.transit_data.model.ArrivalAndDepartureBean;
 import org.onebusaway.transit_data.model.ArrivalAndDepartureForStopQueryBean;
 import org.onebusaway.transit_data.model.ArrivalsAndDeparturesQueryBean;
+import org.onebusaway.transit_data.model.AutocompleteResultBean;
 import org.onebusaway.transit_data.model.ListBean;
 import org.onebusaway.transit_data.model.RegisterAlarmQueryBean;
 import org.onebusaway.transit_data.model.RouteBean;
@@ -87,37 +84,41 @@ import org.onebusaway.transit_data.model.trips.TripsForAgencyQueryBean;
 import org.onebusaway.transit_data.model.trips.TripsForBoundsQueryBean;
 import org.onebusaway.transit_data.model.trips.TripsForRouteQueryBean;
 
+import java.util.Collection;
+import java.util.Date;
+import java.util.List;
+
 /**
  * The {@link TransitDataService} is the primary interface separating
  * user-interface modules that access transit data from the data providers that
  * contain the data.
- * 
+ *
  * The service is a {@link FederatedService}, which means that multiple
  * {@link TransitDataService} instances covering transit agencies across the
  * county can be stitched into one virtual service that seamlessly passes calls
  * to the appropriate underlying instance. As such, you'll notice that all the
  * service methods here are annotated with @FederatedBy... annotations that give
  * hints how the method should be dispatched between multiple instances.
- * 
+ *
  * Note that all methods return "bean" objects, which are POJOs designed for
  * flexibility in over-the-wire serialization for RPC and are separate from the
  * underlying representations in the datastore.
- * 
+ *
  * Implementation Note: when adding methods to this interface, do not introduce
  * multiple methods with the same name and different arguments, as this seems to
  * confuse Hessian proxies of the interface. Additionally, each method must
  * specify a @FederatedBy... annotation indicating how the method will be
  * dispatched in a federated deployment.
- * 
+ *
  * @author bdferris
- * 
+ *
  */
 public interface TransitDataService extends FederatedService {
 
   /**
    * The coverage area for each agency is generally the lat-lon bounds of all
    * stops served by that agency.
-   * 
+   *
    * @return the list of all transit agencies in the service, along with their
    *         coverage information.
    * @throws ServiceException
@@ -144,7 +145,7 @@ public interface TransitDataService extends FederatedService {
   public RoutesBean getRoutes(SearchQueryBean query) throws ServiceException;
 
   /**
-   * 
+   *
    * @param routeId
    * @return the route with specified id, or null if not found
    * @throws ServiceException
@@ -254,7 +255,7 @@ public interface TransitDataService extends FederatedService {
       String vehicleId, long targetTime);
 
   /**
-   * 
+   *
    * @param query
    * @return
    */
@@ -269,7 +270,7 @@ public interface TransitDataService extends FederatedService {
   public void resetVehicleLocation(String vehicleId);
 
   /**
-   * 
+   *
    * @param query determines the vehicle and time of the trip query
    * @return trip details for the trip matching the specified query, or null if
    *         not found
@@ -328,7 +329,7 @@ public interface TransitDataService extends FederatedService {
       throws ServiceException;
 
   /**
-   * 
+   *
    * @param query determines the query bounds, along with an optional stop code
    * @return find all stops within the specified bounds query
    * @throws ServiceException
@@ -352,7 +353,7 @@ public interface TransitDataService extends FederatedService {
   public ListBean<String> getStopIdsForAgencyId(String agencyId);
 
   /**
-   * 
+   *
    * @param shapeId
    * @return an encoded polyline of the shape with the specified id, or null if
    *         not found
@@ -374,7 +375,7 @@ public interface TransitDataService extends FederatedService {
   /**
    * Plan a trip between two locations at a particular time, with the specified
    * constraints.
-   * 
+   *
    * @param from
    * @param to
    * @param targetTime
@@ -400,7 +401,7 @@ public interface TransitDataService extends FederatedService {
       double lonFrom, double latTo, double lonTo) throws ServiceException;
 
   /**
-   * 
+   *
    * @param location
    * @param time
    * @param constraints
@@ -415,7 +416,7 @@ public interface TransitDataService extends FederatedService {
       TransitShedConstraintsBean constraints) throws ServiceException;
 
   /**
-   * 
+   *
    * @param agencyId
    * @param constraints
    * @param minTravelTimeToStops
@@ -469,7 +470,7 @@ public interface TransitDataService extends FederatedService {
 
   /**
    * Report a problem with a particular stop.
-   * 
+   *
    * @param problem the problem summary bean
    */
   @FederatedByEntityIdMethod(propertyExpression = "stopId")
@@ -495,22 +496,22 @@ public interface TransitDataService extends FederatedService {
   public void deleteStopProblemReportForStopIdAndId(String stopId, long id);
 
   /****
-   * 
+   *
    ****/
 
   /**
    * Report a problem with a particular trip.
-   * 
+   *
    * @param problem the problem summary bean
    */
   @FederatedByEntityIdMethod(propertyExpression = "tripId")
   public void reportProblemWithTrip(TripProblemReportBean problem);
 
   /**
-   * 
+   *
    * @param query
    * @return
-   * 
+   *
    * @deprecated see
    *             {@link #getTripProblemReportSummariesByGrouping(TripProblemReportQueryBean, ETripProblemGroupBy)}
    */
@@ -520,7 +521,7 @@ public interface TransitDataService extends FederatedService {
       TripProblemReportQueryBean query);
 
   /**
-   * 
+   *
    * @param query
    * @param groupBy
    * @return
@@ -534,10 +535,10 @@ public interface TransitDataService extends FederatedService {
       TripProblemReportQueryBean query);
 
   /**
-   * 
+   *
    * @param tripId
    * @return
-   * 
+   *
    * @deprecated see {@link #getTripProblemReports(TripProblemReportQueryBean)},
    *             using {@link TripProblemReportQueryBean#getTripId()}.
    */
@@ -558,7 +559,7 @@ public interface TransitDataService extends FederatedService {
 
   @FederatedByAggregateMethod
   public List<String> getAllTripProblemReportLabels();
-  
+
   /**
    * Return an id for the currently loaded bundle.  Assumes bundle meta data is loaded.
    * @return a string representing the current bundle.
@@ -573,7 +574,7 @@ public interface TransitDataService extends FederatedService {
    */
   @FederatedByAgencyIdMethod
   public List<TimepointPredictionRecord> getPredictionRecordsForTrip(String agencyId, TripStatusBean tripStatus);
-  
+
   /**
    * Check to see if scheduled service is expected.
    */
@@ -587,10 +588,14 @@ public interface TransitDataService extends FederatedService {
   public Boolean stopHasUpcomingScheduledService(String agencyId, long time, String stopId, String routeId, String directionId);
 
   /**
-   * Given search string input, match against GTFS route short names and return a list of 
-   * potential matches. 
+   * Given search string input, match against GTFS route short names and return a list of
+   * potential matches.
    */
   @FederatedByAgencyIdMethod
   public List<String> getSearchSuggestions(String agencyId, String input);
+
+
+  @FederatedByAggregateMethod
+  public List<AutocompleteResultBean> getAutocompleteForQuery(String query);
 
 }

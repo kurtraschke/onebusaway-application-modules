@@ -41,6 +41,8 @@ public final class RefreshableResources {
 
   public static final String NARRATIVE_DATA = "narrativeData";
 
+  public static final String AUTOCOMPLETE_INDEX = "autocompleteIndex";
+
   private RefreshableResources() {
 
   }

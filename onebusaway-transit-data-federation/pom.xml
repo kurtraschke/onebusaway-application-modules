@@ -120,7 +120,11 @@
       <artifactId>lucene-join</artifactId>
       <version>${lucene-version}</version>
     </dependency>
-
+    <dependency>
+      <groupId>org.apache.lucene</groupId>
+      <artifactId>lucene-suggest</artifactId>
+      <version>${lucene-version}</version>
+    </dependency>
 
     <dependency>
       <groupId>org.slf4j</groupId>

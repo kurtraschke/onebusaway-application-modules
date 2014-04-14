@@ -119,11 +119,21 @@
 
   <bean id="stopSearchIndexTask" class="org.onebusaway.transit_data_federation.bundle.tasks.GenerateStopSearchIndexTask" />
 
+  <!-- Autocomplete Index -->
+
+  <bean class="org.onebusaway.transit_data_federation.bundle.model.TaskDefinition">
+    <property name="taskName" value="autocomplete_index" />
+    <property name="afterTaskName" value="stop_search_index" />
+    <property name="task" ref="autocompleteIndexTask" />
+  </bean>
+
+  <bean id="autocompleteIndexTask" class="org.onebusaway.transit_data_federation.bundle.tasks.GenerateAutocompleteIndexTask" />
+
   <!-- Shape Geospatial Index -->
 
   <bean class="org.onebusaway.transit_data_federation.bundle.model.TaskDefinition">
     <property name="taskName" value="shape_geospatial_index" />
-    <property name="afterTaskName" value="stop_search_index" />
+    <property name="afterTaskName" value="autocomplete_index" />
     <property name="task" ref="shapeGeospatialIndexTask" />
   </bean>
 

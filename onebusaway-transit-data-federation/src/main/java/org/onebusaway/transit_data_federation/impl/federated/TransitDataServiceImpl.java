@@ -35,6 +35,7 @@ import org.onebusaway.transit_data.model.AgencyWithCoverageBean;
 import org.onebusaway.transit_data.model.ArrivalAndDepartureBean;
 import org.onebusaway.transit_data.model.ArrivalAndDepartureForStopQueryBean;
 import org.onebusaway.transit_data.model.ArrivalsAndDeparturesQueryBean;
+import org.onebusaway.transit_data.model.AutocompleteResultBean;
 import org.onebusaway.transit_data.model.ListBean;
 import org.onebusaway.transit_data.model.RegisterAlarmQueryBean;
 import org.onebusaway.transit_data.model.RouteBean;
@@ -87,6 +88,7 @@ import org.onebusaway.transit_data_federation.services.AgencyAndIdLibrary;
 import org.onebusaway.transit_data_federation.services.AgencyService;
 import org.onebusaway.transit_data_federation.services.ArrivalAndDepartureAlarmService;
 import org.onebusaway.transit_data_federation.services.ArrivalAndDepartureQuery;
+import org.onebusaway.transit_data_federation.services.AutocompleteService;
 import org.onebusaway.transit_data_federation.services.PredictionHelperService;
 import org.onebusaway.transit_data_federation.services.ScheduleHelperService;
 import org.onebusaway.transit_data_federation.services.beans.AgencyBeanService;
@@ -111,8 +113,11 @@ import org.onebusaway.transit_data_federation.services.transit_graph.StopEntry;
 import org.onebusaway.transit_data_federation.services.transit_graph.TransitGraphDao;
 import org.onebusaway.transit_data_federation.services.transit_graph.TripEntry;
 
+<<<<<<< HEAD
 import com.spatial4j.core.shape.Shape;
 
+=======
+>>>>>>> 48738ce... First pass at using Lucene to drive autocomplete index.
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -197,6 +202,10 @@ class TransitDataServiceImpl implements TransitDataService {
 
   @Autowired
   private ScheduleHelperService _scheduleHelperService;
+
+  @Autowired
+  private AutocompleteService _autocompleteService;
+
   /****
    * {@link TransitDataService} Interface
    ****/
@@ -720,6 +729,7 @@ class TransitDataServiceImpl implements TransitDataService {
     return adQuery;
   }
 
+
   private void checkBounds(SearchBounds cb) {
     if (cb == null) {
       return;
@@ -737,6 +747,11 @@ class TransitDataServiceImpl implements TransitDataService {
     }
 
     throw new OutOfServiceAreaServiceException();
+  }
+
+  @Override
+  public List<AutocompleteResultBean> getAutocompleteForQuery(String query) {
+    return _autocompleteService.getAutocompleteForQuery(query);
   }
 
 }

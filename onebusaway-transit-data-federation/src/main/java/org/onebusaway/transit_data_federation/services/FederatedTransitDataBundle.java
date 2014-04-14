@@ -56,6 +56,10 @@ public class FederatedTransitDataBundle {
     _key = key;
   }
 
+  public File getAutocompleteIndexPath() {
+    return new File(_path, "AutocompleteIndex");
+  }
+
   public File getCalendarServiceDataPath() {
     return new File(_path, "CalendarServiceData.obj");
   }
@@ -171,4 +175,5 @@ public class FederatedTransitDataBundle {
       paths.add(path);
     }
   }
+
 }

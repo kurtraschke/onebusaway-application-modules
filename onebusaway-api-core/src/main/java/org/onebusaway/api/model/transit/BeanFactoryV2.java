@@ -15,12 +15,6 @@
  */
 package org.onebusaway.api.model.transit;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Set;
-
 import org.onebusaway.api.impl.MaxCountSupport;
 import org.onebusaway.api.model.transit.blocks.BlockConfigurationV2Bean;
 import org.onebusaway.api.model.transit.blocks.BlockInstanceV2Bean;
@@ -42,6 +36,7 @@ import org.onebusaway.geospatial.model.EncodedPolylineBean;
 import org.onebusaway.transit_data.model.AgencyBean;
 import org.onebusaway.transit_data.model.AgencyWithCoverageBean;
 import org.onebusaway.transit_data.model.ArrivalAndDepartureBean;
+import org.onebusaway.transit_data.model.AutocompleteResultBean;
 import org.onebusaway.transit_data.model.ListBean;
 import org.onebusaway.transit_data.model.RouteBean;
 import org.onebusaway.transit_data.model.RoutesBean;
@@ -80,6 +75,12 @@ import org.onebusaway.transit_data.model.service_alerts.TimeRangeBean;
 import org.onebusaway.transit_data.model.trips.TripBean;
 import org.onebusaway.transit_data.model.trips.TripDetailsBean;
 import org.onebusaway.transit_data.model.trips.TripStatusBean;
+
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 public class BeanFactoryV2 {
 
@@ -192,6 +193,14 @@ public class BeanFactoryV2 {
     return list(beans, result.isLimitExceeded(), false);
   }
 
+  public ListWithReferencesBean<AutocompleteResultV2Bean> getAutocompleteResponse(List<AutocompleteResultBean> results) {
+    List<AutocompleteResultV2Bean> beans = new ArrayList<AutocompleteResultV2Bean>();
+    for (AutocompleteResultBean result: filter(results)) {
+        beans.add(getAutocomplete(result));
+    }
+    return list(beans, results.size() < beans.size(), false);
+  }
+
   public ListWithReferencesBean<TripDetailsV2Bean> getTripDetailsResponse(
       ListBean<TripDetailsBean> trips) {
 
@@ -244,7 +253,7 @@ public class BeanFactoryV2 {
   }
 
   /****
-   * 
+   *
    *****/
 
   public ListWithReferencesBean<String> getEntityIdsResponse(
@@ -258,7 +267,7 @@ public class BeanFactoryV2 {
   }
 
   /****
-   * 
+   *
    ***/
 
   public TimeIntervalV2 getTimeInterval(TimeIntervalBean interval) {
@@ -664,7 +673,7 @@ public class BeanFactoryV2 {
     /*
      * StopCalendarDaysBean days = stopSchedule.getCalendarDays();
      * bean.setTimeZone(days.getTimeZone());
-     * 
+     *
      * List<StopCalendarDayV2Bean> dayBeans = new
      * ArrayList<StopCalendarDayV2Bean>(); for (StopCalendarDayBean day :
      * days.getDays()) { StopCalendarDayV2Bean dayBean =
@@ -1072,6 +1081,21 @@ public class BeanFactoryV2 {
     if (bean == null)
       return null;
     return new CoordinatePoint(bean.getLat(), bean.getLon());
+  }
+
+  public AutocompleteResultV2Bean getAutocomplete(AutocompleteResultBean autocompleteResult) {
+    AutocompleteResultV2Bean bean = new AutocompleteResultV2Bean();
+    bean.setKey(autocompleteResult.getKey());
+
+    Object payload = autocompleteResult.getPayload();
+
+    if (payload instanceof StopBean) {
+      addToReferences((StopBean) payload);
+    } else if (payload instanceof RouteBean) {
+      addToReferences((RouteBean) payload);
+    }
+
+    return bean;
   }
 
   /****
