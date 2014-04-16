@@ -109,6 +109,7 @@ public class GenerateAutocompleteIndexTask implements Runnable {
         String payload = "stop:" + stop.getId();
         StopNarrative stopNarrative = _narrativeService.getStopForId(stop.getId());
 
+        //FIXME: do we want to be indexing IDs at all?
         if (isValue(stopNarrative.getCode())) {
           inputEntries.add(new InputEntry(stopNarrative.getCode(), 4, payload));
           inputEntries.add(new InputEntry(stop.getId().getId(), 1, payload));

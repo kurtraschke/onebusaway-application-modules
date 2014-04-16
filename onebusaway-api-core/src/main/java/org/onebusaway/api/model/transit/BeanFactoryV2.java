@@ -1086,6 +1086,7 @@ public class BeanFactoryV2 {
   public AutocompleteResultV2Bean getAutocomplete(AutocompleteResultBean autocompleteResult) {
     AutocompleteResultV2Bean bean = new AutocompleteResultV2Bean();
     bean.setKey(autocompleteResult.getKey());
+    bean.setResult(autocompleteResult.getResult().toString());
 
     Object payload = autocompleteResult.getPayload();
 
@@ -1094,6 +1095,8 @@ public class BeanFactoryV2 {
     } else if (payload instanceof RouteBean) {
       addToReferences((RouteBean) payload);
     }
+
+    bean.setResultType(payload.getClass().getSimpleName());
 
     return bean;
   }
