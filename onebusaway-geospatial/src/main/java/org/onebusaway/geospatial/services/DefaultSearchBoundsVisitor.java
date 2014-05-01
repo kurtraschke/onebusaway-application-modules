@@ -19,6 +19,7 @@ package org.onebusaway.geospatial.services;
 import org.onebusaway.geospatial.DefaultSpatialContext;
 import org.onebusaway.geospatial.model.CoordinateBounds;
 import org.onebusaway.geospatial.model.RadiusBounds;
+import org.onebusaway.geospatial.model.SearchBounds;
 import org.onebusaway.geospatial.model.SearchBoundsVisitor;
 
 import com.spatial4j.core.context.SpatialContext;
@@ -45,6 +46,12 @@ public class DefaultSearchBoundsVisitor implements SearchBoundsVisitor {
 
   public Shape getShape() {
     return _shape;
+  }
+
+  public static Shape shape(SearchBounds bounds) {
+    DefaultSearchBoundsVisitor visitor = new DefaultSearchBoundsVisitor();
+    bounds.accept(visitor);
+    return visitor.getShape();
   }
 
 }

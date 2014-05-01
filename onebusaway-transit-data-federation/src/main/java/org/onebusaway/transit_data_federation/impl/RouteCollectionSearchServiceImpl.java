@@ -28,7 +28,6 @@ import org.onebusaway.transit_data_federation.services.RouteCollectionSearchServ
 import org.onebusaway.transit_data_federation.services.StopSearchIndexConstants;
 
 import com.spatial4j.core.context.SpatialContext;
-import com.spatial4j.core.shape.Shape;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
@@ -143,10 +142,8 @@ public class RouteCollectionSearchServiceImpl implements
     }
 
     if (_stopSearcher != null && bounds != null) {
-      DefaultSearchBoundsVisitor v = new DefaultSearchBoundsVisitor();
-      bounds.accept(v);
-      Shape shape = v.getShape();
-      SpatialArgs sa = new SpatialArgs(SpatialOperation.IsWithin, shape);
+      SpatialArgs sa = new SpatialArgs(SpatialOperation.IsWithin,
+          DefaultSearchBoundsVisitor.shape(bounds));
 
       Query spatialQuery = _spatialStrategy.makeQuery(sa);
 

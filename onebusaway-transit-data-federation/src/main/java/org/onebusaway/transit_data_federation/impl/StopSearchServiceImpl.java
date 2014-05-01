@@ -28,7 +28,6 @@ import org.onebusaway.transit_data_federation.services.StopSearchService;
 import org.onebusaway.transit_data_federation.services.beans.GeospatialBeanService;
 
 import com.spatial4j.core.context.SpatialContext;
-import com.spatial4j.core.shape.Shape;
 
 import org.apache.lucene.document.Document;
 import org.apache.lucene.index.DirectoryReader;
@@ -145,10 +144,8 @@ public class StopSearchServiceImpl implements StopSearchService,
     }
 
     if (bounds != null) {
-      DefaultSearchBoundsVisitor v = new DefaultSearchBoundsVisitor();
-      bounds.accept(v);
-      Shape shape = v.getShape();
-      sa = new SpatialArgs(SpatialOperation.IsWithin, shape);
+      sa = new SpatialArgs(SpatialOperation.IsWithin,
+          DefaultSearchBoundsVisitor.shape(bounds));
     }
 
     if (query != null && bounds != null) {

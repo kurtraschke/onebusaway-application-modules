@@ -25,6 +25,8 @@ import org.onebusaway.federations.annotations.FederatedByEntityIdMethod;
 import org.onebusaway.geospatial.model.CoordinateBounds;
 import org.onebusaway.geospatial.model.CoordinatePoint;
 import org.onebusaway.geospatial.model.EncodedPolylineBean;
+import org.onebusaway.geospatial.model.SearchBounds;
+import org.onebusaway.geospatial.services.DefaultSearchBoundsVisitor;
 import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.gtfs.model.calendar.ServiceDate;
 import org.onebusaway.realtime.api.TimepointPredictionRecord;
@@ -108,6 +110,8 @@ import org.onebusaway.transit_data_federation.services.reporting.UserReportingSe
 import org.onebusaway.transit_data_federation.services.transit_graph.StopEntry;
 import org.onebusaway.transit_data_federation.services.transit_graph.TransitGraphDao;
 import org.onebusaway.transit_data_federation.services.transit_graph.TripEntry;
+
+import com.spatial4j.core.shape.Shape;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -270,7 +274,7 @@ class TransitDataServiceImpl implements TransitDataService {
 
   @Override
   public StopsBean getStops(SearchQueryBean query) throws ServiceException {
-    //checkBounds(query.getBounds());
+    checkBounds(query.getBounds());
     return _stopsBeanService.getStops(query);
   }
 
@@ -435,7 +439,7 @@ class TransitDataServiceImpl implements TransitDataService {
 
   @Override
   public RoutesBean getRoutes(SearchQueryBean query) throws ServiceException {
-    //checkBounds(query.getBounds());
+    checkBounds(query.getBounds());
     return _routesBeanService.getRoutesForQuery(query);
   }
 
@@ -716,15 +720,18 @@ class TransitDataServiceImpl implements TransitDataService {
     return adQuery;
   }
 
-  private void checkBounds(CoordinateBounds cb) {
-    if (cb == null || cb.isEmpty()) {
+  private void checkBounds(SearchBounds cb) {
+    if (cb == null) {
       return;
     }
+
+    Shape boundsShape = DefaultSearchBoundsVisitor.shape(cb);
 
     Collection<CoordinateBounds> allAgencyBounds = _agencyService.getAgencyIdsAndCoverageAreas().values();
 
     for (CoordinateBounds agencyBounds : allAgencyBounds) {
-      if (agencyBounds.intersects(cb)) {
+      Shape agencyShape = DefaultSearchBoundsVisitor.shape(agencyBounds);
+      if (agencyShape.relate(boundsShape).intersects()) {
         return;
       }
     }

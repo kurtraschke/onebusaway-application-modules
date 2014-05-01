@@ -89,11 +89,8 @@ public class ShapeSearchServiceImpl implements ShapeSearchService {
 
   @Override
   public List<AgencyAndId> search(SearchBounds bounds) {
-    DefaultSearchBoundsVisitor v = new DefaultSearchBoundsVisitor();
-    bounds.accept(v);
-
     Query spatialQuery = _spatialStrategy.makeQuery(new SpatialArgs(
-        SpatialOperation.Intersects, v.getShape()));
+        SpatialOperation.Intersects, DefaultSearchBoundsVisitor.shape(bounds)));
 
     try {
       TopDocs top = _searcher.search(spatialQuery,
