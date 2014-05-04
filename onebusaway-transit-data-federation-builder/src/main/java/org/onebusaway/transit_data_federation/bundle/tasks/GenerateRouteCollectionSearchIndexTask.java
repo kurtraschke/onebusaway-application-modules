@@ -33,8 +33,7 @@ import org.onebusaway.transit_data_federation.services.transit_graph.TransitGrap
 import org.onebusaway.transit_data_federation.services.transit_graph.TripEntry;
 
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
-import org.apache.lucene.analysis.util.CharArraySet;
+import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StoredField;
@@ -106,8 +105,7 @@ public class GenerateRouteCollectionSearchIndexTask implements Runnable {
 
   private void buildIndex() throws IOException {
     Directory dir = FSDirectory.open(_bundle.getRouteSearchIndexPath());
-    Analyzer analyzer = new StandardAnalyzer(Version.LUCENE_47,
-        CharArraySet.EMPTY_SET);
+    Analyzer analyzer = new WhitespaceAnalyzer(Version.LUCENE_47);
     IndexWriterConfig iwc = new IndexWriterConfig(Version.LUCENE_47, analyzer);
 
     iwc.setOpenMode(OpenMode.CREATE);
@@ -147,7 +145,7 @@ public class GenerateRouteCollectionSearchIndexTask implements Runnable {
     if (isValue(narrative.getShortName())) {
       Field f = new TextField(
           RouteCollectionSearchIndexConstants.FIELD_ROUTE_SHORT_NAME,
-          narrative.getShortName(), Field.Store.NO);
+          narrative.getShortName().toLowerCase(), Field.Store.NO);
       document.add(f);
     }
 
@@ -155,7 +153,7 @@ public class GenerateRouteCollectionSearchIndexTask implements Runnable {
     if (isValue(narrative.getLongName())) {
       Field f = new TextField(
           RouteCollectionSearchIndexConstants.FIELD_ROUTE_LONG_NAME,
-          narrative.getLongName(), Field.Store.NO);
+          narrative.getLongName().toLowerCase(), Field.Store.NO);
       document.add(f);
     }
 
@@ -163,7 +161,7 @@ public class GenerateRouteCollectionSearchIndexTask implements Runnable {
     if (isValue(narrative.getDescription())) {
       document.add(new TextField(
           RouteCollectionSearchIndexConstants.FIELD_ROUTE_DESCRIPTION,
-          narrative.getDescription(), Field.Store.NO));
+          narrative.getDescription().toLowerCase(), Field.Store.NO));
     }
 
     // Stops

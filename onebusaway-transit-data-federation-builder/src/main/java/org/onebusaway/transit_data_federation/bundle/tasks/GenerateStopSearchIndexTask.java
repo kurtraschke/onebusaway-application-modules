@@ -33,7 +33,7 @@ import com.spatial4j.core.context.SpatialContext;
 import com.spatial4j.core.shape.Point;
 
 import org.apache.lucene.analysis.Analyzer;
-import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.analysis.core.WhitespaceAnalyzer;
 import org.apache.lucene.document.Document;
 import org.apache.lucene.document.Field;
 import org.apache.lucene.document.StoredField;
@@ -111,7 +111,7 @@ public class GenerateStopSearchIndexTask implements Runnable {
 
   private void buildIndex() throws IOException {
     Directory dir = FSDirectory.open(_bundle.getStopSearchIndexPath());
-    Analyzer analyzer = new StandardAnalyzer(Version.LUCENE_47);
+    Analyzer analyzer = new WhitespaceAnalyzer(Version.LUCENE_47);
     IndexWriterConfig iwc = new IndexWriterConfig(Version.LUCENE_47, analyzer);
 
     iwc.setOpenMode(OpenMode.CREATE);
@@ -146,23 +146,23 @@ public class GenerateStopSearchIndexTask implements Runnable {
     // Code
     if (isValue(narrative.getCode())) {
       document.add(new StringField(StopSearchIndexConstants.FIELD_STOP_CODE,
-          narrative.getCode(), Field.Store.NO));
+          narrative.getCode().toLowerCase(), Field.Store.NO));
     } else {
       document.add(new StringField(StopSearchIndexConstants.FIELD_STOP_CODE,
-          stopEntry.getId().getId(), Field.Store.NO));
+          stopEntry.getId().getId().toLowerCase(), Field.Store.NO));
     }
 
     // Name
     if (isValue(narrative.getName())) {
       document.add(new TextField(StopSearchIndexConstants.FIELD_STOP_NAME,
-          narrative.getName(), Field.Store.NO));
+          narrative.getName().toLowerCase(), Field.Store.NO));
     }
 
     // Description
     if (isValue(narrative.getDescription())) {
       document.add(new TextField(
           StopSearchIndexConstants.FIELD_STOP_DESCRIPTION,
-          narrative.getDescription(), Field.Store.NO));
+          narrative.getDescription().toLowerCase(), Field.Store.NO));
     }
 
     // Location

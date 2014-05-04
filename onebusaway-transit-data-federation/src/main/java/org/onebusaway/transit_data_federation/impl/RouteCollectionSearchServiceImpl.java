@@ -39,7 +39,9 @@ import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.FuzzyQuery;
 import org.apache.lucene.search.IndexSearcher;
 import org.apache.lucene.search.Query;
+import org.apache.lucene.search.QueryWrapperFilter;
 import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TermQuery;
 import org.apache.lucene.search.TopDocs;
 import org.apache.lucene.search.join.JoinUtil;
 import org.apache.lucene.search.join.ScoreMode;
@@ -114,7 +116,9 @@ public class RouteCollectionSearchServiceImpl implements
       int maxResultCount, double minScoreToKeep) throws IOException,
       ParseException {
 
-    BooleanQuery searchQuery = new BooleanQuery();
+    BooleanQuery searchQuery = null;
+    Query spatialJoinQuery = null;
+    TopDocs top;
 
     if (_routeSearcher == null) {
       return new SearchResult<AgencyAndId>();
@@ -124,20 +128,21 @@ public class RouteCollectionSearchServiceImpl implements
       query = null;
     }
 
-    if (query == null && bounds == null) {
-      throw new IllegalArgumentException(
-          "one or more of query, bounds must be non-null");
-    }
-
     if (query != null) {
+      searchQuery = new BooleanQuery(true);
+      String[] queryTerms = query.toLowerCase().split(" ");
+
       for (String fieldName : NAME_FIELDS) {
-        BooleanQuery fieldQuery = new BooleanQuery();
-        for (String termString : query.split(" ")) {
+        for (String termString : queryTerms) {
+          TermQuery termQuery = new TermQuery(new Term(fieldName, termString));
+          termQuery.setBoost(2.0f);
+          searchQuery.add(termQuery, Occur.SHOULD);
+
           FuzzyQuery fuzzyQuery = new FuzzyQuery(
-              new Term(fieldName, termString), RouteCollectionSearchIndexConstants.MAX_EDITS);
-          fieldQuery.add(fuzzyQuery, Occur.MUST);
+              new Term(fieldName, termString),
+              RouteCollectionSearchIndexConstants.MAX_EDITS);
+          searchQuery.add(fuzzyQuery, Occur.SHOULD);
         }
-        searchQuery.add(fieldQuery, Occur.SHOULD);
       }
     }
 
@@ -147,17 +152,27 @@ public class RouteCollectionSearchServiceImpl implements
 
       Query spatialQuery = _spatialStrategy.makeQuery(sa);
 
-      Query spatialJoinQuery = JoinUtil.createJoinQuery(
+      spatialJoinQuery = JoinUtil.createJoinQuery(
           StopSearchIndexConstants.FIELD_AGENCY_AND_ID, false,
           RouteCollectionSearchIndexConstants.FIELD_ROUTE_STOP_AGENCY_AND_ID,
           spatialQuery, _stopSearcher, ScoreMode.Max);
-
-      searchQuery.add(spatialJoinQuery, Occur.MUST);
     }
 
-    TopDocs top = _routeSearcher.search(searchQuery, maxResultCount);
+    if (searchQuery != null && spatialJoinQuery != null) {
+      top = _routeSearcher.search(searchQuery, new QueryWrapperFilter(
+          spatialJoinQuery), maxResultCount);
+    } else if (searchQuery != null) {
+      top = _routeSearcher.search(searchQuery, maxResultCount);
+    } else if (spatialJoinQuery != null) {
+      top = _routeSearcher.search(spatialJoinQuery, maxResultCount);
+    } else {
+      throw new IllegalArgumentException(
+          "one or more of query, bounds must be non-null");
+    }
+
     Map<AgencyAndId, Float> topScores = new HashMap<AgencyAndId, Float>();
 
+    System.out.println("---");
     for (ScoreDoc sd : top.scoreDocs) {
       Document document = _routeSearcher.doc(sd.doc);
 

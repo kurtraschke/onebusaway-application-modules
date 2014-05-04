@@ -32,4 +32,6 @@ public class StopSearchIndexConstants {
 
   public static final String FIELD_AGENCY_AND_ID = "agencyAndId";
 
+  public static final int MAX_EDITS = 1;
+
 }

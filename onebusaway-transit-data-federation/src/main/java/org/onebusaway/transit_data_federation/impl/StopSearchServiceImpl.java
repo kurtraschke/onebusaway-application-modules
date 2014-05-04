@@ -121,24 +121,27 @@ public class StopSearchServiceImpl implements StopSearchService,
     }
 
     if (query != null) {
-      bq = new BooleanQuery();
+      bq = new BooleanQuery(true);
 
       if (mode == SearchMode.CODE_ONLY || mode == SearchMode.ALL) {
         for (String codeFieldName : CODE_FIELDS) {
-          bq.add(new TermQuery(new Term(codeFieldName, query)),
+          bq.add(new TermQuery(new Term(codeFieldName, query.toLowerCase())),
               BooleanClause.Occur.SHOULD);
         }
       }
 
       if (mode == SearchMode.NAME_ONLY || mode == SearchMode.ALL) {
+        String[] queryTerms = query.toLowerCase().split(" ");
         for (String fieldName : NAME_FIELDS) {
-          BooleanQuery fieldQuery = new BooleanQuery();
-          for (String termString : query.split(" ")) {
+          for (String termString : queryTerms) {
+            TermQuery termQuery = new TermQuery(new Term(fieldName, termString));
+            termQuery.setBoost(2.0f);
+            bq.add(termQuery, Occur.SHOULD);
+
             FuzzyQuery fuzzyQuery = new FuzzyQuery(new Term(fieldName,
-                termString), 1);
-            fieldQuery.add(fuzzyQuery, Occur.MUST);
+                termString), StopSearchIndexConstants.MAX_EDITS);
+            bq.add(fuzzyQuery, Occur.SHOULD);
           }
-          bq.add(fieldQuery, Occur.SHOULD);
         }
       }
     }
@@ -167,8 +170,10 @@ public class StopSearchServiceImpl implements StopSearchService,
 
     for (ScoreDoc sd : top.scoreDocs) {
       Document document = _searcher.doc(sd.doc);
-      if (sd.score < minScoreToKeep)
+
+      if (sd.score < minScoreToKeep) {
         continue;
+      }
       String agencyId = document.get(StopSearchIndexConstants.FIELD_AGENCY_ID);
       String stopId = document.get(StopSearchIndexConstants.FIELD_STOP_ID);
       AgencyAndId id = new AgencyAndId(agencyId, stopId);
