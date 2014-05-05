@@ -24,6 +24,7 @@ import org.onebusaway.transit_data_federation.model.narrative.RouteCollectionNar
 import org.onebusaway.transit_data_federation.services.FederatedTransitDataBundle;
 import org.onebusaway.transit_data_federation.services.RouteCollectionSearchIndexConstants;
 import org.onebusaway.transit_data_federation.services.RouteCollectionSearchService;
+import org.onebusaway.transit_data_federation.services.SearchIndexConstants;
 import org.onebusaway.transit_data_federation.services.narrative.NarrativeService;
 import org.onebusaway.transit_data_federation.services.transit_graph.RouteCollectionEntry;
 import org.onebusaway.transit_data_federation.services.transit_graph.RouteEntry;
@@ -44,7 +45,6 @@ import org.apache.lucene.index.IndexWriterConfig;
 import org.apache.lucene.index.IndexWriterConfig.OpenMode;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
-import org.apache.lucene.util.Version;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -105,8 +105,8 @@ public class GenerateRouteCollectionSearchIndexTask implements Runnable {
 
   private void buildIndex() throws IOException {
     Directory dir = FSDirectory.open(_bundle.getRouteSearchIndexPath());
-    Analyzer analyzer = new WhitespaceAnalyzer(Version.LUCENE_47);
-    IndexWriterConfig iwc = new IndexWriterConfig(Version.LUCENE_47, analyzer);
+    Analyzer analyzer = new WhitespaceAnalyzer(SearchIndexConstants.LUCENE_VERSION);
+    IndexWriterConfig iwc = new IndexWriterConfig(SearchIndexConstants.LUCENE_VERSION, analyzer);
 
     iwc.setOpenMode(OpenMode.CREATE);
 

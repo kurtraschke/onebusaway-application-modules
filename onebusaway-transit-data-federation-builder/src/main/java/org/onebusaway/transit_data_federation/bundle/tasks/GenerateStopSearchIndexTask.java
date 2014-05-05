@@ -23,6 +23,7 @@ import org.onebusaway.transit_data_federation.impl.RefreshableResources;
 import org.onebusaway.transit_data_federation.impl.StopSearchServiceImpl;
 import org.onebusaway.transit_data_federation.model.narrative.StopNarrative;
 import org.onebusaway.transit_data_federation.services.FederatedTransitDataBundle;
+import org.onebusaway.transit_data_federation.services.SearchIndexConstants;
 import org.onebusaway.transit_data_federation.services.StopSearchIndexConstants;
 import org.onebusaway.transit_data_federation.services.StopSearchService;
 import org.onebusaway.transit_data_federation.services.narrative.NarrativeService;
@@ -46,7 +47,6 @@ import org.apache.lucene.spatial.SpatialStrategy;
 import org.apache.lucene.spatial.vector.PointVectorStrategy;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
-import org.apache.lucene.util.Version;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -111,8 +111,8 @@ public class GenerateStopSearchIndexTask implements Runnable {
 
   private void buildIndex() throws IOException {
     Directory dir = FSDirectory.open(_bundle.getStopSearchIndexPath());
-    Analyzer analyzer = new WhitespaceAnalyzer(Version.LUCENE_47);
-    IndexWriterConfig iwc = new IndexWriterConfig(Version.LUCENE_47, analyzer);
+    Analyzer analyzer = new WhitespaceAnalyzer(SearchIndexConstants.LUCENE_VERSION);
+    IndexWriterConfig iwc = new IndexWriterConfig(SearchIndexConstants.LUCENE_VERSION, analyzer);
 
     iwc.setOpenMode(OpenMode.CREATE);
 

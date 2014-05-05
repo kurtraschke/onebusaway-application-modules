@@ -22,6 +22,7 @@ import org.onebusaway.gtfs.model.AgencyAndId;
 import org.onebusaway.transit_data_federation.impl.RefreshableResources;
 import org.onebusaway.transit_data_federation.model.ShapePoints;
 import org.onebusaway.transit_data_federation.services.FederatedTransitDataBundle;
+import org.onebusaway.transit_data_federation.services.SearchIndexConstants;
 import org.onebusaway.transit_data_federation.services.ShapeSearchIndexConstants;
 import org.onebusaway.transit_data_federation.services.transit_graph.TransitGraphDao;
 import org.onebusaway.transit_data_federation.services.transit_graph.TripEntry;
@@ -44,7 +45,6 @@ import org.apache.lucene.spatial.prefix.tree.QuadPrefixTree;
 import org.apache.lucene.spatial.prefix.tree.SpatialPrefixTree;
 import org.apache.lucene.store.Directory;
 import org.apache.lucene.store.FSDirectory;
-import org.apache.lucene.util.Version;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -113,8 +113,8 @@ class ShapeGeospatialIndexTask implements Runnable {
 
   private void buildIndex() throws IOException {
     Directory dir = FSDirectory.open(_bundle.getShapeSearchIndexPath());
-    Analyzer analyzer = new StandardAnalyzer(Version.LUCENE_47);
-    IndexWriterConfig iwc = new IndexWriterConfig(Version.LUCENE_47, analyzer);
+    Analyzer analyzer = new StandardAnalyzer(SearchIndexConstants.LUCENE_VERSION);
+    IndexWriterConfig iwc = new IndexWriterConfig(SearchIndexConstants.LUCENE_VERSION, analyzer);
 
     iwc.setOpenMode(OpenMode.CREATE);
 
