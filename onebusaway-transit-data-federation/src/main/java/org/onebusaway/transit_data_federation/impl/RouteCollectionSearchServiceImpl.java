@@ -172,7 +172,6 @@ public class RouteCollectionSearchServiceImpl implements
 
     Map<AgencyAndId, Float> topScores = new HashMap<AgencyAndId, Float>();
 
-    System.out.println("---");
     for (ScoreDoc sd : top.scoreDocs) {
       Document document = _routeSearcher.doc(sd.doc);
 
