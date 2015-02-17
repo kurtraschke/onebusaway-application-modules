@@ -61,6 +61,12 @@
       <groupId>org.slf4j</groupId>
       <artifactId>slf4j-log4j12</artifactId>
     </dependency>
+    
+    <dependency>
+      <groupId>org.python</groupId>
+      <artifactId>jython-standalone</artifactId>
+      <version>2.7-b3</version>
+    </dependency>
 
     <dependency>
       <groupId>junit</groupId>
@@ -125,6 +131,31 @@
             </configuration>
           </execution>
         </executions>
+      </plugin>
+      <plugin>
+        <groupId>net.sf.mavenjython</groupId>
+        <artifactId>jython-compile-maven-plugin</artifactId>
+        <version>1.2</version>
+        <executions>
+          <execution>
+            <phase>package</phase>
+            <goals>
+              <goal>jython</goal>
+            </goals>
+          </execution>
+        </executions>
+        <configuration>
+          <libraries>
+            <param>transitfeed</param>
+          </libraries>
+        </configuration>
+        <dependencies>
+          <dependency>
+            <groupId>org.python</groupId>
+            <artifactId>jython-standalone</artifactId>
+            <version>2.7-b3</version>
+          </dependency>
+        </dependencies>
       </plugin>
     </plugins>
   </build>
