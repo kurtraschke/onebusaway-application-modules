@@ -9,6 +9,10 @@
 
   <name>onebusaway-transit-data-federation-builder</name>
 
+  <properties>
+    <jython-version>2.7-b4</jython-version>
+  </properties>
+
   <dependencies>
     <dependency>
       <groupId>org.onebusaway</groupId>
@@ -65,7 +69,13 @@
     <dependency>
       <groupId>org.python</groupId>
       <artifactId>jython-standalone</artifactId>
-      <version>2.7-b3</version>
+      <version>${jython-version}</version>
+    </dependency>
+
+    <dependency>
+      <groupId>org.xerial</groupId>
+      <artifactId>sqlite-jdbc</artifactId>
+      <version>3.8.7</version>
     </dependency>
 
     <dependency>
@@ -135,10 +145,10 @@
       <plugin>
         <groupId>net.sf.mavenjython</groupId>
         <artifactId>jython-compile-maven-plugin</artifactId>
-        <version>1.2</version>
+        <version>1.2</version><!-- FIXME -->
         <executions>
           <execution>
-            <phase>package</phase>
+            <phase>prepare-package</phase>
             <goals>
               <goal>jython</goal>
             </goals>
@@ -146,14 +156,15 @@
         </executions>
         <configuration>
           <libraries>
-            <param>transitfeed</param>
+            <param>pytz</param>
+            <param>https://github.com/kurtraschke/transitfeed/archive/jython-support.zip#egg=transitfeed</param> <!-- FIXME -->
           </libraries>
         </configuration>
         <dependencies>
           <dependency>
             <groupId>org.python</groupId>
             <artifactId>jython-standalone</artifactId>
-            <version>2.7-b3</version>
+            <version>${jython-version}</version>
           </dependency>
         </dependencies>
       </plugin>
