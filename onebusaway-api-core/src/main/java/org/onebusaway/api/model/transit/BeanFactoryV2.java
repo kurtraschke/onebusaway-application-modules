@@ -81,6 +81,9 @@ import org.onebusaway.transit_data.model.service_alerts.TimeRangeBean;
 import org.onebusaway.transit_data.model.trips.TripBean;
 import org.onebusaway.transit_data.model.trips.TripDetailsBean;
 import org.onebusaway.transit_data.model.trips.TripStatusBean;
+import org.onebusaway.transit_data.services.TransitDataService;
+
+import org.springframework.beans.factory.annotation.Autowired;
 
 public class BeanFactoryV2 {
 
@@ -95,6 +98,8 @@ public class BeanFactoryV2 {
   private String _applicationKey;
 
   private Locale _locale;
+  
+  private TransitDataService _service;
 
   public BeanFactoryV2(boolean includeReferences) {
     _includeReferences = includeReferences;
@@ -117,6 +122,11 @@ public class BeanFactoryV2 {
     _locale = locale;
   }
 
+  @Autowired
+  public void setTransitDataService(TransitDataService service) {
+    _service = service;
+  }
+  
   /****
    * Response Methods
    ****/
@@ -710,6 +720,7 @@ public class BeanFactoryV2 {
       stiBean.setTripId(sti.getTripId());
       stiBean.setStopHeadsign(stiBean.getStopHeadsign());
       stopTimes.add(stiBean);
+      addToReferences(_service.getTrip(sti.getTripId()));
     }
 
     if (!stopTimes.isEmpty())
@@ -728,6 +739,7 @@ public class BeanFactoryV2 {
       freqBean.setArrivalEnabled(freq.isArrivalEnabled());
       freqBean.setDepartureEnabled(freq.isDepartureEnabled());
       frequencies.add(freqBean);
+      addToReferences(_service.getTrip(freq.getTripId()));
     }
 
     if (!frequencies.isEmpty())
